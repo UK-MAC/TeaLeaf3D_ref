@@ -23,7 +23,7 @@ MODULE field_summary_kernel_module
 
 CONTAINS
 
-SUBROUTINE field_summary_kernel(x_min,x_max,y_min,y_max, &
+SUBROUTINE field_summary_kernel(x_min,x_max,y_min,y_max,z_min,z_max,&
                                 volume,                  &
                                 density,                 &
                                 energy0,                 &
@@ -32,13 +32,12 @@ SUBROUTINE field_summary_kernel(x_min,x_max,y_min,y_max, &
 
   IMPLICIT NONE
 
-  INTEGER      :: x_min,x_max,y_min,y_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: volume
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: density,energy0
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: u
+  INTEGER      :: x_min,x_max,y_min,y_max,z_min,z_max
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: volume,u
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: density,energy0
   REAL(KIND=8) :: vol,mass,ie,temp
 
-  INTEGER      :: j,k
+  INTEGER      :: j,k,l
   REAL(KIND=8) :: cell_vol,cell_mass
 
   vol=0.0
@@ -47,15 +46,17 @@ SUBROUTINE field_summary_kernel(x_min,x_max,y_min,y_max, &
   temp=0.0
 
 !$OMP PARALLEL
-!$OMP DO PRIVATE(cell_vol,cell_mass) REDUCTION(+ : vol,mass,ie,temp)
-  DO k=y_min,y_max
-    DO j=x_min,x_max
-      cell_vol=volume(j,k)
-      cell_mass=cell_vol*density(j,k)
-      vol=vol+cell_vol
-      mass=mass+cell_mass
-      ie=ie+cell_mass*energy0(j,k)
-      temp=temp+cell_mass*u(j,k)
+!$OMP DO PRIVATE(cell_vol,cell_mass,j,k) REDUCTION(+ : vol,mass,ie, temp)
+  DO l=z_min,z_max
+    DO k=y_min,y_max
+      DO j=x_min,x_max
+        cell_vol=volume(j,k,l)
+        cell_mass=cell_vol*density(j,k,l)
+        vol=vol+cell_vol
+        mass=mass+cell_mass
+        ie=ie+cell_mass*energy0(j,k,l)
+        temp = temp + cell_mass*u(j,k,l)
+      ENDDO
     ENDDO
   ENDDO
 !$OMP END DO

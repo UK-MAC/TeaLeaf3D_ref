@@ -31,15 +31,15 @@ SUBROUTINE start
 
   INTEGER :: c
 
-  INTEGER :: x_cells,y_cells
-  INTEGER, ALLOCATABLE :: right(:),left(:),top(:),bottom(:)
+  INTEGER :: x_cells,y_cells,z_cells
+  INTEGER, ALLOCATABLE :: right(:),left(:),top(:),bottom(:),back(:),front(:)
 
   INTEGER :: fields(NUM_FIELDS)
 
   LOGICAL :: profiler_off
 
   IF(parallel%boss)THEN
-    WRITE(g_out,*) 'Setting up initial geometry'
+    WrITE(g_out,*) 'Setting up initial geometry'
     WRITE(g_out,*)
   ENDIF
 
@@ -52,12 +52,15 @@ SUBROUTINE start
   CALL tea_get_num_chunks(number_of_chunks)
 
   ALLOCATE(chunks(1:number_of_chunks))
+
   ALLOCATE(left(1:number_of_chunks))
   ALLOCATE(right(1:number_of_chunks))
   ALLOCATE(bottom(1:number_of_chunks))
   ALLOCATE(top(1:number_of_chunks))
+  ALLOCATE(back(1:number_of_chunks))
+  ALLOCATE(front(1:number_of_chunks))
 
-  CALL tea_decompose(grid%x_cells,grid%y_cells,left,right,bottom,top)
+  CALL tea_decompose(grid%x_cells,grid%y_cells, grid%z_cells,left,right,bottom,top, back, front)
 
   DO c=1,chunks_per_task
       
@@ -68,26 +71,33 @@ SUBROUTINE start
 
     x_cells = right(c) -left(c)  +1
     y_cells = top(c)   -bottom(c)+1
-      
+    z_cells = front(c) -back(c)  +1
+
     IF(chunks(c)%task.EQ.parallel%task)THEN
-      CALL build_field(c,x_cells,y_cells)
+      CALL build_field(c,x_cells,y_cells,z_cells)
     ENDIF
     chunks(c)%field%left    = left(c)
     chunks(c)%field%bottom  = bottom(c)
     chunks(c)%field%right   = right(c)
     chunks(c)%field%top     = top(c)
+    chunks(c)%field%back    = back(c)
+    chunks(c)%field%front   = front(c)
     chunks(c)%field%left_boundary   = 1
     chunks(c)%field%bottom_boundary = 1
+    chunks(c)%field%back_boundary   = 1
     chunks(c)%field%right_boundary  = grid%x_cells
     chunks(c)%field%top_boundary    = grid%y_cells
+    chunks(c)%field%front_boundary  = grid%z_cells
     chunks(c)%field%x_min = 1
     chunks(c)%field%y_min = 1
+    chunks(c)%field%z_min = 1
     chunks(c)%field%x_max = right(c)-left(c)+1
     chunks(c)%field%y_max = top(c)-bottom(c)+1
+    chunks(c)%field%z_max = front(c)-back(c)+1
 
   ENDDO
 
-  DEALLOCATE(left,right,bottom,top)
+  DEALLOCATE(left,right,bottom,top,back,front)
 
   CALL tea_barrier
 

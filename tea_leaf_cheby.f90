@@ -29,140 +29,164 @@ SUBROUTINE tea_leaf_calc_2norm_kernel(x_min, &
                           x_max,             &
                           y_min,             &
                           y_max,             &
+                          z_min,             &
+                          z_max,             &
                           arr,               &
                           norm)
 
   IMPLICIT NONE
 
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: arr
+  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: arr
   REAL(KIND=8) :: norm
-  integer :: j, k
+  integer :: j,k,l
 
   norm = 0.0_8
 
 !$OMP PARALLEL
 !$OMP DO REDUCTION(+:norm)
+  DO l=z_min,z_max
     DO k=y_min,y_max
         DO j=x_min,x_max
-            norm = norm + arr(j, k)*arr(j, k)
+            norm = norm + arr(j, k, l)*arr(j, k, l)
         ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
 !$OMP END PARALLEL
 
 end SUBROUTINE tea_leaf_calc_2norm_kernel
 
-SUBROUTINE tea_leaf_kernel_cheby_init(x_min,  &
+SUBROUTINE tea_leaf_kernel_cheby_init(x_min,             &
                            x_max,             &
                            y_min,             &
                            y_max,             &
-                           u,                 &
+                           z_min,             &
+                           z_max,             &
+                           u,                &
                            u0,                &
-                           p,                 &
-                           r,                 &
-                           Mi,                &
-                           w,                 &
-                           z,                 &
+                           p,                &
+                           r,            &
+                           Mi,            &
+                           w,     &
+                           z,            &
                            Kx,                &
-                           Ky,                &
-                           ch_alphas,         &
-                           ch_betas,          &
-                           max_cheby_iters,   &
-                           rx,                &
-                           ry,                &
-                           theta,             &
-                           error,             &
+                           Ky,  &
+                           Kz,  &
+                           ch_alphas, &
+                           ch_betas, &
+                           max_cheby_iters, &
+                           rx, &
+                           ry, &
+                           rz, &
+                           theta, &
+                           error, &
                            preconditioner_on)
   IMPLICIT NONE
 
   LOGICAL :: preconditioner_on
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: u, u0, p
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: w
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: r, Mi, z
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: Kx, Ky
+  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u0
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: w
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: p, r, Mi, z
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: Kx, Ky, Kz
 
-  INTEGER :: j,k, max_cheby_iters
-  REAL(KIND=8) ::  rx, ry, error, theta
+  INTEGER :: j,k,l, max_cheby_iters
+  REAL(KIND=8) ::  rx, ry, error, theta, rz
   REAL(KIND=8), DIMENSION(max_cheby_iters) :: ch_alphas, ch_betas
 
 !$OMP PARALLEL
   IF (preconditioner_on) THEN
 !$OMP DO
+  DO l=z_min,z_max
     DO k=y_min,y_max
         DO j=x_min,x_max
-            w(j, k) = (1.0_8                                      &
-                + ry*(Ky(j, k+1) + Ky(j, k))                      &
-                + rx*(Kx(j+1, k) + Kx(j, k)))*u(j, k)             &
-                - ry*(Ky(j, k+1)*u(j, k+1) + Ky(j, k)*u(j, k-1))  &
-                - rx*(Kx(j+1, k)*u(j+1, k) + Kx(j, k)*u(j-1, k))
-            r(j, k) = u0(j, k) - w(j, k)
+            w(j, k, l) = (1.0_8                                      &
+                + rx*(Kx(j+1, k, l) + Kx(j, k, l)) &
+                + ry*(Ky(j, k+1, l) + Ky(j, k, l))                      &
+                + rz*(Kz(j, k, l+1) + Kz(j, k, l)))*u(j, k, l)             &
+                - rx*(Kx(j+1, k, l)*u(j+1, k, l) + Kx(j, k, l)*u(j-1, k, l)) &
+                - ry*(Ky(j, k+1, l)*u(j, k+1, l) + Ky(j, k, l)*u(j, k-1, l))  &
+                - rz*(Kz(j, k, l+1)*u(j, k, l+1) + Kz(j, k, l)*u(j, k, l-1))
+            r(j, k, l) = u0(j, k, l) - w(j, k, l)
 
-            p(j, k) = (Mi(j, k)*r(j, k))/theta
+            p(j, k, l) = (Mi(j, k, l)*r(j, k, l))/theta
         ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
   ELSE
 !$OMP DO
+  DO l=z_min,z_max
     DO k=y_min,y_max
         DO j=x_min,x_max
-            w(j, k) = (1.0_8                                      &
-                + ry*(Ky(j, k+1) + Ky(j, k))                      &
-                + rx*(Kx(j+1, k) + Kx(j, k)))*u(j, k)             &
-                - ry*(Ky(j, k+1)*u(j, k+1) + Ky(j, k)*u(j, k-1))  &
-                - rx*(Kx(j+1, k)*u(j+1, k) + Kx(j, k)*u(j-1, k))
-            r(j, k) = u0(j, k) - w(j, k)
+            w(j, k, l) = (1.0_8                                      &
+                + rx*(Kx(j+1, k, l) + Kx(j, k, l)) &
+                + ry*(Ky(j, k+1, l) + Ky(j, k, l))                      &
+                + rz*(Kz(j, k, l+1) + Kz(j, k, l)))*u(j, k, l)             &
+                - rx*(Kx(j+1, k, l)*u(j+1, k, l) + Kx(j, k, l)*u(j-1, k, l)) &
+                - ry*(Ky(j, k+1, l)*u(j, k+1, l) + Ky(j, k, l)*u(j, k-1, l))  &
+                - rz*(Kz(j, k, l+1)*u(j, k, l+1) + Kz(j, k, l)*u(j, k, l-1))
+            r(j, k, l) = u0(j, k, l) - w(j, k, l)
 
-            p(j, k) = r(j, k)/theta
+            p(j, k, l) = r(j, k, l)/theta
         ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
   ENDIF
 !$OMP DO
+  DO l=z_min,z_max
   DO k=y_min,y_max
       DO j=x_min,x_max
-          u(j, k) = u(j, k) + p(j, k)
+          u(j, k, l) = u(j, k, l) + p(j, k, l)
       ENDDO
+  ENDDO
   ENDDO
 !$OMP END DO
 !$OMP END PARALLEL
 
 END SUBROUTINE
 
-SUBROUTINE tea_leaf_kernel_cheby_iterate(x_min, &
-                           x_max,               &
-                           y_min,               &
-                           y_max,               &
-                           u,                   &
-                           u0,                  &
-                           p,                   &
-                           r,                   &
-                           Mi,                  &
-                           w                ,   &
-                           z,                   &
-                           Kx,                  &
-                           Ky,                  &
-                           ch_alphas,           &
-                           ch_betas,            &
-                           max_cheby_iters,     &
-                           rx,                  &
-                           ry,                  &
-                           step,                &
+SUBROUTINE tea_leaf_kernel_cheby_iterate(x_min,             &
+                           x_max,             &
+                           y_min,             &
+                           y_max,             &
+                           z_min,             &
+                           z_max,             &
+                           u,                &
+                           u0,                &
+                           p,                &
+                           r,            &
+                           Mi,            &
+                           w,     &
+                           z,            &
+                           Kx,                &
+                           Ky,  &
+                           Kz,  &
+                           ch_alphas, &
+                           ch_betas, &
+                           max_cheby_iters, &
+                           rx, &
+                           ry, &
+                           rz, &
+                           step, &
                            preconditioner_on)
 
   IMPLICIT NONE
 
   LOGICAL :: preconditioner_on
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: u, u0, p
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: w
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: r, Mi, z
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: Kx, Ky
+  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u0
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: w
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: p, r, Mi, z
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: Kx, Ky, Kz
 
-  INTEGER :: j,k
+  INTEGER :: j,k,l
 
-    REAL(KIND=8) ::  rx, ry
+    REAL(KIND=8) ::  rx, ry, rz
 
     INTEGER :: step, max_cheby_iters
     REAL(KIND=8), DIMENSION(max_cheby_iters) :: ch_alphas, ch_betas
@@ -170,65 +194,80 @@ SUBROUTINE tea_leaf_kernel_cheby_iterate(x_min, &
 !$OMP PARALLEL
   IF (preconditioner_on) THEN
 !$OMP DO
+  DO l=z_min,z_max
     DO k=y_min,y_max
         DO j=x_min,x_max
-            w(j, k) = (1.0_8                                      &
-                + ry*(Ky(j, k+1) + Ky(j, k))                      &
-                + rx*(Kx(j+1, k) + Kx(j, k)))*u(j, k)             &
-                - ry*(Ky(j, k+1)*u(j, k+1) + Ky(j, k)*u(j, k-1))  &
-                - rx*(Kx(j+1, k)*u(j+1, k) + Kx(j, k)*u(j-1, k))
-            r(j, k) = u0(j, k) - w(j, k)
-            p(j, k) = ch_alphas(step)*p(j, k) + ch_betas(step)*Mi(j, k)*r(j, k)
+            w(j, k, l) = (1.0_8                                      &
+                + rx*(Kx(j+1, k, l) + Kx(j, k, l)) &
+                + ry*(Ky(j, k+1, l) + Ky(j, k, l))                      &
+                + rz*(Kz(j, k, l+1) + Kz(j, k, l)))*u(j, k, l)             &
+                - rx*(Kx(j+1, k, l)*u(j+1, k, l) + Kx(j, k, l)*u(j-1, k, l)) &
+                - ry*(Ky(j, k+1, l)*u(j, k+1, l) + Ky(j, k, l)*u(j, k-1, l))  &
+                - rz*(Kz(j, k, l+1)*u(j, k, l+1) + Kz(j, k, l)*u(j, k, l-1))
+            r(j, k, l) = u0(j, k, l) - w(j, k, l)
+
+            p(j, k, l) = ch_alphas(step)*p(j, k, l) + ch_betas(step)*Mi(j, k, l)*r(j, k, l)
         ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
   ELSE
 !$OMP DO
+  DO l=z_min,z_max
     DO k=y_min,y_max
         DO j=x_min,x_max
-            w(j, k) = (1.0_8                                      &
-                + ry*(Ky(j, k+1) + Ky(j, k))                      &
-                + rx*(Kx(j+1, k) + Kx(j, k)))*u(j, k)             &
-                - ry*(Ky(j, k+1)*u(j, k+1) + Ky(j, k)*u(j, k-1))  &
-                - rx*(Kx(j+1, k)*u(j+1, k) + Kx(j, k)*u(j-1, k))
-            r(j, k) = u0(j, k) - w(j, k)
-            p(j, k) = ch_alphas(step)*p(j, k) + ch_betas(step)*r(j, k)
+            w(j, k, l) = (1.0_8                                      &
+                + rx*(Kx(j+1, k, l) + Kx(j, k, l)) &
+                + ry*(Ky(j, k+1, l) + Ky(j, k, l))                      &
+                + rz*(Kz(j, k, l+1) + Kz(j, k, l)))*u(j, k, l)             &
+                - rx*(Kx(j+1, k, l)*u(j+1, k, l) + Kx(j, k, l)*u(j-1, k, l)) &
+                - ry*(Ky(j, k+1, l)*u(j, k+1, l) + Ky(j, k, l)*u(j, k-1, l))  &
+                - rz*(Kz(j, k, l+1)*u(j, k, l+1) + Kz(j, k, l)*u(j, k, l-1))
+            r(j, k, l) = u0(j, k, l) - w(j, k, l)
+
+            p(j, k, l) = ch_alphas(step)*p(j, k, l) + ch_betas(step)*r(j, k, l)
         ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
   ENDIF
 !$OMP DO
+  DO l=z_min,z_max
     DO k=y_min,y_max
         DO j=x_min,x_max
-            u(j, k) = u(j, k) + p(j, k)
+            u(j, k, l) = u(j, k, l) + p(j, k, l)
         ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
 !$OMP END PARALLEL
 
 END SUBROUTINE tea_leaf_kernel_cheby_iterate
 
-SUBROUTINE tea_leaf_kernel_cheby_copy_u(x_min,&
+SUBROUTINE tea_leaf_kernel_cheby_copy_u(x_min,             &
                            x_max,             &
                            y_min,             &
                            y_max,             &
+                           z_min,             &
+                           z_max,             &
                            u0, u)
   IMPLICIT NONE
 
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: u, u0
-  INTEGER(KIND=4) :: j,k
+  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u, u0
+  INTEGER(KIND=4) :: j,k,l
 
 !$OMP PARALLEL
 !$OMP DO
+  DO l=z_min,z_max
     DO k=y_min,y_max
         DO j=x_min,x_max
-            u0(j, k) = u(j, k)
+            u0(j, k, l) = u(j, k, l)
         ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
 !$OMP END PARALLEL
-
 end SUBROUTINE
 
 SUBROUTINE tqli(d,e,n, info)
@@ -279,8 +318,8 @@ SUBROUTINE tqli(d,e,n, info)
         d(l)=d(l)-p
         e(l)=g
         e(m)=0.0_8
-      END DO iterate
-    END DO
+        end do iterate
+    end do
 END SUBROUTINE tqli
 
 SUBROUTINE tea_calc_eigenvalues(cg_alphas, cg_betas, eigmin, eigmax, &

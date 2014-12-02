@@ -23,22 +23,20 @@ MODULE tea_leaf_kernel_module
 
 CONTAINS
 
-SUBROUTINE tea_leaf_kernel_init(x_min,        &
+SUBROUTINE tea_leaf_kernel_init(x_min,             &
                            x_max,             &
                            y_min,             &
                            y_max,             &
-                           celldx,            &
-                           celldy,            &
-                           volume,            &
+                           z_min,             &
+                           z_max,             &
                            density,           &
                            energy,            &
                            u0,                &
                            u1,                &
                            un,                &
-                           Kx_tmp,            &
-                           Ky_tmp,            &
                            Kx,                &
                            Ky,                &
+                           Kz,                &
                            coef)
 
   IMPLICIT NONE
@@ -46,70 +44,58 @@ SUBROUTINE tea_leaf_kernel_init(x_min,        &
    INTEGER         ::            CONDUCTIVITY        = 1 &
                                 ,RECIP_CONDUCTIVITY  = 2
 
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2) :: celldx
-  REAL(KIND=8), DIMENSION(y_min-2:y_max+2) :: celldy
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: volume
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: density
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: energy
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: u0
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: u1
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: un
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: Kx_tmp
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: Ky_tmp
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: Kx
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: Ky
+  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: density, energy, u0, Kx, Ky, Kz, u1, un
 
   INTEGER(KIND=4) :: coef
 
-  INTEGER(KIND=4) :: j,k,n
+  INTEGER(KIND=4) :: j,k,n,l
 
 
 ! CALC DIFFUSION COEFFICIENT
 !$OMP PARALLEL
   IF(coef .EQ. RECIP_CONDUCTIVITY) THEN
 !$OMP DO 
+  DO l=z_min-1,z_max+2
     DO k=y_min-1,y_max+2
       DO j=x_min-1,x_max+2
-         Kx_tmp(j  ,k  )=1.0_8/density(j  ,k  )
-         Ky_tmp(j  ,k  )=1.0_8/density(j  ,k  )
+         un(j, k, l)=1.0_8/density(j, k, l)
       ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
   ELSE IF(coef .EQ. CONDUCTIVITY) THEN
 !$OMP DO
+  DO l=z_min-1,z_max+2
     DO k=y_min-1,y_max+2
       DO j=x_min-1,x_max+2
-         Kx_tmp(j  ,k  )=density(j  ,k  )
-         Ky_tmp(j  ,k  )=density(j  ,k  )
+         un(j, k, l)=density(j, k, l)
       ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
   ENDIF
 
 !$OMP DO
+  DO l=z_min,z_max+1
   DO k=y_min,y_max+1
     DO j=x_min,x_max+1
-         Kx(j,k)=(Kx_tmp(j-1,k  )+Kx_tmp(j,k))/(2.0_8*Kx_tmp(j-1,k  )*Kx_tmp(j,k))
-         Ky(j,k)=(Ky_tmp(j  ,k-1)+Ky_tmp(j,k))/(2.0_8*Ky_tmp(j,  k-1)*Ky_tmp(j,k))
+         Kx(j, k, l)=(un(j-1,k  ,l)+un(j, k, l))/(2.0_8*un(j-1,k  ,l)*un(j, k, l))
+         Ky(j, k, l)=(un(j  ,k-1,l)+un(j, k, l))/(2.0_8*un(j,  k-1,l)*un(j, k, l))
+         Kz(j, k, l)=(un(j, k, l-1)+un(j, k, l))/(2.0_8*un(j,  k,l-1)*un(j, k, l))
     ENDDO
+  ENDDO
   ENDDO
 !$OMP END DO
 
 !$OMP DO 
+  DO l=z_min-1,z_max+1
   DO k=y_min-1, y_max+1
     DO j=x_min-1, x_max+1
-      u0(j,k) =  energy(j,k) * density(j,k)
+      u0(j, k, l) = energy(j, k, l) * density(j, k, l)
+      u1(j, k, l) = u0(j, k, l)
     ENDDO
   ENDDO
-!$OMP END DO
-
-  ! INITIAL GUESS
-!$OMP DO
-  DO k=y_min-1, y_max+1
-    DO j=x_min-1, x_max+1
-      u1(j,k) = u0(j,k)
-    ENDDO
   ENDDO
 !$OMP END DO
 !$OMP END PARALLEL
@@ -121,11 +107,15 @@ SUBROUTINE tea_leaf_kernel_solve(x_min,       &
                            x_max,             &
                            y_min,             &
                            y_max,             &
+                           z_min,             &
+                           z_max,             &
                            rx,                &
                            ry,                &
+                           rz,                &
                            Kx,                &
                            Ky,                &
-                           error,             &
+                           Kz,                &
+                           error,           &
                            u0,                &
                            u1,                &
                            un)
@@ -133,39 +123,42 @@ SUBROUTINE tea_leaf_kernel_solve(x_min,       &
 
   IMPLICIT NONE
 
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: un
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: u1, u0
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: Kx
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: Ky
+  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u0, un, u1, Kx, Ky, Kz
 
-  REAL(KIND=8) :: ry,rx, error
+  REAL(KIND=8) :: ry,rx, rz,error
 
-  INTEGER(KIND=4) :: j,k
+  INTEGER(KIND=4) :: j,k,l
 
   error = 0.0_8
 
 !$OMP PARALLEL
 !$OMP DO
+  DO l=z_min-1,z_max+1
     DO k=y_min-1, y_max+1
       DO j=x_min-1, x_max+1
-        un(j,k) = u1(j,k)
+        un(j, k, l) = u1(j, k, l)
       ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
 
 !$OMP DO REDUCTION(+:error)
+  DO l=z_min,z_max
     DO k=y_min, y_max
       DO j=x_min, x_max
-        u1(j,k) = (u0(j,k) + rx*(Kx(j+1,k  )*un(j+1,k  ) + Kx(j  ,k  )*un(j-1,k  ))  &
-                           + ry*(Ky(j  ,k+1)*un(j  ,k+1) + Ky(j  ,k  )*un(j  ,k-1))) &
+        u1(j, k, l) = (u0(j, k, l) + rx*(Kx(j+1,k  ,l)*un(j+1,k  ,l) + Kx(j, k, l)*un(j-1,k  ,l)) &
+                                  + ry*(Ky(j  ,k+1,l)*un(j  ,k+1,l) + Ky(j, k, l)*un(j  ,k-1,l)) &
+                                  + rz*(Kz(j  ,k,l+1)*un(j  ,k,l+1) + Kz(j, k, l)*un(j  ,k,l-1))) &
                              /(1.0_8 &
-                                + rx*(Kx(j,k)+Kx(j+1,k)) &
-                                + ry*(Ky(j,k)+Ky(j,k+1)))
+                                + rx*(Kx(j, k, l)+Kx(j+1,k,l)) &
+                                + ry*(Ky(j, k, l)+Ky(j,k+1,l)) &
+                                + rz*(Kz(j, k, l)+Kz(j,k,l+1)))
 
-        error = error +  ABS(u1(j,k)-un(j,k))
+        error = error +  ABS(u1(j, k, l)-un(j, k, l))
       ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
 !$OMP END PARALLEL
 
@@ -176,63 +169,73 @@ SUBROUTINE tea_leaf_kernel_finalise(x_min,    &
                            x_max,             &
                            y_min,             &
                            y_max,             &
+                           z_min,             &
+                           z_max,             &
                            energy,            &
                            density,           &
                            u)
 
   IMPLICIT NONE
 
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: u
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: energy
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: density
+  INTEGER(KIND=4):: x_min,x_max,y_min,y_max, z_min, z_max
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: energy
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: density
 
-  INTEGER(KIND=4) :: j,k
+  INTEGER(KIND=4) :: j,k,l
 
 !$OMP PARALLEL DO 
+  DO l=z_min, z_max
   DO k=y_min, y_max
     DO j=x_min, x_max
-      energy(j,k) = u(j,k) / density(j,k)
+      energy(j, k, l) = u(j, k, l) / density(j, k, l)
     ENDDO
+  ENDDO
   ENDDO
 !$OMP END PARALLEL DO
 
 END SUBROUTINE tea_leaf_kernel_finalise
 
 SUBROUTINE tea_leaf_calc_residual(x_min,       &
-                                  x_max,       &
-                                  y_min,       &
-                                  y_max,       &
-                                  u ,          &
-                                  u0,          &
-                                  r,           &
-                                  Kx,          &
-                                  Ky,          &
-                                  rx, ry       )
+                           x_max,             &
+                           y_min,             &
+                           y_max,             &
+                           z_min,             &
+                           z_max,             &
+                           u ,                &
+                           u0,                &
+                           r,                &
+                           Kx,                &
+                           Ky,                &
+                           Kz,                &
+                           rx, ry, rz)
 
   IMPLICIT NONE
 
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: u0, u, r
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: Kx
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: Ky
+  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u0, u, r
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: Kx, ky, kz
 
-  REAL(KIND=8) :: smvp, rx, ry
+  REAL(KIND=8) :: smvp, rx, ry, rz
 
-  INTEGER(KIND=4) :: j,k
+  INTEGER(KIND=4) :: j,k,l
 
 !$OMP PARALLEL
-!$OMP DO private(smvp)
-    DO k=y_min, y_max
-      DO j=x_min, x_max
-        smvp = (1.0_8                                         &
-            + ry*(Ky(j, k+1) + Ky(j, k))                      &
-            + rx*(Kx(j+1, k) + Kx(j, k)))*u(j, k)             &
-            - ry*(Ky(j, k+1)*u(j, k+1) + Ky(j, k)*u(j, k-1))  &
-            - rx*(Kx(j+1, k)*u(j+1, k) + Kx(j, k)*u(j-1, k))
-        r(j, k) = u0(j, k) - smvp
-      ENDDO
+!$OMP DO PRIVATE(smvp)
+  DO l=z_min,z_max
+    DO k=y_min,y_max
+        DO j=x_min,x_max
+            smvp = (1.0_8                                      &
+                + rx*(Kx(j+1, k, l) + Kx(j, k, l)) &
+                + ry*(Ky(j, k+1, l) + Ky(j, k, l))                      &
+                + rz*(Kz(j, k, l+1) + Kz(j, k, l)))*u(j, k, l)             &
+                - rx*(Kx(j+1, k, l)*u(j+1, k, l) + Kx(j, k, l)*u(j-1, k, l)) &
+                - ry*(Ky(j, k+1, l)*u(j, k+1, l) + Ky(j, k, l)*u(j, k-1, l))  &
+                - rz*(Kz(j, k, l+1)*u(j, k, l+1) + Kz(j, k, l)*u(j, k, l-1))
+            r(j, k, l) = u0(j, k, l) - smvp
+        ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
 !$OMP END PARALLEL
 

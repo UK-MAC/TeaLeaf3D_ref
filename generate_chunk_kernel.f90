@@ -27,12 +27,14 @@ MODULE generate_chunk_kernel_module
 
 CONTAINS
 
-SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max, &
+SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max,z_min,z_max, &
                                  vertexx,                 &
                                  vertexy,                 &
+                                 vertexz,                 &
                                  cellx,                   &
                                  celly,                   &
-                                 density,                 &
+                                 cellz,                   &
+                                 density,                &
                                  energy0,                 &
                                  u0,                      &
                                  number_of_states,        &
@@ -42,6 +44,8 @@ SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max, &
                                  state_xmax,              &
                                  state_ymin,              &
                                  state_ymax,              &
+                                 state_zmin,              &
+                                 state_zmax,              &
                                  state_radius,            &
                                  state_geometry,          &
                                  g_rect,                  &
@@ -50,14 +54,14 @@ SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max, &
 
   IMPLICIT NONE
 
-  INTEGER      :: x_min,x_max,y_min,y_max
+  INTEGER      :: x_min,x_max,y_min,y_max,z_min,z_max
   REAL(KIND=8), DIMENSION(x_min-2:x_max+3) :: vertexx
   REAL(KIND=8), DIMENSION(y_min-2:y_max+3) :: vertexy
-  REAL(KIND=8), DIMENSION(y_min-2:y_max+3) :: vertexdy
+  REAL(KIND=8), DIMENSION(z_min-2:z_max+3) :: vertexz
   REAL(KIND=8), DIMENSION(x_min-2:x_max+2) :: cellx
   REAL(KIND=8), DIMENSION(y_min-2:y_max+2) :: celly
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: density,energy0
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: u0
+  REAL(KIND=8), DIMENSION(z_min-2:z_max+2) :: cellz
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: density,energy0,u0
   INTEGER      :: number_of_states
   REAL(KIND=8), DIMENSION(number_of_states) :: state_density
   REAL(KIND=8), DIMENSION(number_of_states) :: state_energy
@@ -65,31 +69,37 @@ SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max, &
   REAL(KIND=8), DIMENSION(number_of_states) :: state_xmax
   REAL(KIND=8), DIMENSION(number_of_states) :: state_ymin
   REAL(KIND=8), DIMENSION(number_of_states) :: state_ymax
+  REAL(KIND=8), DIMENSION(number_of_states) :: state_zmin
+  REAL(KIND=8), DIMENSION(number_of_states) :: state_zmax
   REAL(KIND=8), DIMENSION(number_of_states) :: state_radius
   INTEGER     , DIMENSION(number_of_states) :: state_geometry
   INTEGER      :: g_rect
   INTEGER      :: g_circ
   INTEGER      :: g_point
 
-  REAL(KIND=8) :: radius,x_cent,y_cent
+  REAL(KIND=8) :: radius,x_cent,y_cent,z_cent
   INTEGER      :: state
 
-  INTEGER      :: j,k,jt,kt
+  INTEGER      :: j,k,jt,kt,l,lt
 
   ! State 1 is always the background state
 
 !$OMP PARALLEL SHARED(x_cent,y_cent)
 !$OMP DO
-  DO k=y_min-2,y_max+2
-    DO j=x_min-2,x_max+2
-      energy0(j,k)=state_energy(1)
+  DO l=z_min-2,z_max+2
+    DO k=y_min-2,y_max+2
+      DO j=x_min-2,x_max+2
+        energy0(j,k,l)=state_energy(1)
+      ENDDO
     ENDDO
   ENDDO
 !$OMP END DO
 !$OMP DO
-  DO k=y_min-2,y_max+2
-    DO j=x_min-2,x_max+2
-      density(j,k)=state_density(1)
+  DO l=z_min-2,z_max+2
+    DO k=y_min-2,y_max+2
+      DO j=x_min-2,x_max+2
+        density(j,k,l)=state_density(1)
+      ENDDO
     ENDDO
   ENDDO
 !$OMP END DO
@@ -98,29 +108,34 @@ SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max, &
 
     x_cent=state_xmin(state)
     y_cent=state_ymin(state)
+    z_cent=state_zmin(state)
 
-!$OMP DO PRIVATE(radius,jt,kt)
-    DO k=y_min-2,y_max+2
-      DO j=x_min-2,x_max+2
-        IF(state_geometry(state).EQ.g_rect ) THEN
-          IF(vertexx(j+1).GE.state_xmin(state).AND.vertexx(j).LT.state_xmax(state)) THEN
-            IF(vertexy(k+1).GE.state_ymin(state).AND.vertexy(k).LT.state_ymax(state)) THEN
-              energy0(j,k)=state_energy(state)
-              density(j,k)=state_density(state)
+!$OMP DO PRIVATE(radius,jt,kt,lt)
+    DO l=z_min-2,z_max+2
+      DO k=y_min-2,y_max+2
+        DO j=x_min-2,x_max+2
+          IF(state_geometry(state).EQ.g_rect ) THEN
+            IF(vertexx(j+1).GE.state_xmin(state).AND.vertexx(j).LT.state_xmax(state)) THEN
+              IF(vertexy(k+1).GE.state_ymin(state).AND.vertexy(k).LT.state_ymax(state)) THEN
+                IF(vertexz(l+1).GE.state_zmin(state).AND.vertexz(l).LT.state_zmax(state)) THEN
+                  energy0(j,k,l)=state_energy(state)
+                  density(j,k,l)=state_density(state)
+                ENDIF
+              ENDIF
+            ENDIF
+          ELSEIF(state_geometry(state).EQ.g_circ ) THEN
+            radius=SQRT((cellx(j)-x_cent)*(cellx(j)-x_cent)+(celly(k)-y_cent)*(celly(k)-y_cent)+(cellz(l)-z_cent)*(cellz(l)-z_cent))
+            IF(radius.LE.state_radius(state))THEN
+              energy0(j,k,l)=state_energy(state)
+              density(j,k,l)=state_density(state)
+            ENDIF
+          ELSEIF(state_geometry(state).EQ.g_point) THEN
+            IF(vertexx(j).EQ.x_cent .AND. vertexy(k).EQ.y_cent .AND. vertexz(l).EQ.z_cent) THEN
+              energy0(j,k,l)=state_energy(state)
+              density(j,k,l)=state_density(state)
             ENDIF
           ENDIF
-        ELSEIF(state_geometry(state).EQ.g_circ ) THEN
-          radius=SQRT((cellx(j)-x_cent)*(cellx(j)-x_cent)+(celly(k)-y_cent)*(celly(k)-y_cent))
-          IF(radius.LE.state_radius(state))THEN
-            energy0(j,k)=state_energy(state)
-            density(j,k)=state_density(state)
-          ENDIF
-        ELSEIF(state_geometry(state).EQ.g_point) THEN
-          IF(vertexx(j).EQ.x_cent .AND. vertexy(k).EQ.y_cent) THEN
-            energy0(j,k)=state_energy(state)
-            density(j,k)=state_density(state)
-          ENDIF
-        ENDIF
+        ENDDO
       ENDDO
     ENDDO
 !$OMP END DO
@@ -128,11 +143,13 @@ SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max, &
   ENDDO
 
 !$OMP DO 
+DO l=z_min-1,z_max+1
   DO k=y_min-1, y_max+1
     DO j=x_min-1, x_max+1
-      u0(j,k) =  energy0(j,k) * density(j,k)
+      u0(j,k,l) =  energy0(j,k,l) * density(j,k,l)
     ENDDO
   ENDDO
+ENDDO
 !$OMP END DO
 
 !$OMP END PARALLEL
