@@ -19,6 +19,8 @@ FUNCTION zincs(field_type) RESULT(z_inc)
     z_inc=0
   ELSEIF(field_type.EQ.Z_FACE_DATA) THEN
     z_inc=1
+  ELSE
+    z_inc=0
   ENDIF
 END FUNCTION
 
@@ -34,6 +36,8 @@ FUNCTION yincs(field_type) RESULT(y_inc)
   ELSEIF(field_type.EQ.Y_FACE_DATA) THEN
     y_inc=1
   ELSEIF(field_type.EQ.Z_FACE_DATA) THEN
+    y_inc=0
+  ELSE
     y_inc=0
   ENDIF
 END FUNCTION
@@ -51,6 +55,8 @@ FUNCTION xincs(field_type) RESULT(x_inc)
     x_inc=0
   ELSEIF(field_type.EQ.Z_FACE_DATA) THEN
     x_inc=0
+  ELSE
+    x_inc=0
   ENDIF
 END FUNCTION
 
@@ -61,7 +67,6 @@ SUBROUTINE tea_pack_buffers(chunk, fields, depth, face, mpi_buffer, offsets)
   INTEGER      :: offsets(:)
   REAL(KIND=8) :: mpi_buffer(:)
   INTEGER       :: face
-  LOGICAL       :: packing
 
   CALL call_packing_functions(chunk, fields, depth, face, .TRUE., mpi_buffer, offsets)
 
@@ -74,7 +79,6 @@ SUBROUTINE tea_unpack_buffers(chunk, fields, depth, face, mpi_buffer, offsets)
   INTEGER      :: offsets(:)
   REAL(KIND=8) :: mpi_buffer(:)
   INTEGER       :: face
-  LOGICAL       :: packing
 
   CALL call_packing_functions(chunk, fields, depth, face, .FALSE., mpi_buffer, offsets)
 

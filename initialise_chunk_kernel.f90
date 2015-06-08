@@ -23,7 +23,7 @@ MODULE initialise_chunk_kernel_module
 
 CONTAINS
 
-SUBROUTINE initialise_chunk_kernel(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,&
+SUBROUTINE initialise_chunk_kernel(x_min,x_max,y_min,y_max,z_min,z_max,&
                                    xmin,ymin,zmin,dx,dy,dz,            &
                                    vertexx,                            &
                                    vertexdx,                           &
@@ -44,7 +44,7 @@ SUBROUTINE initialise_chunk_kernel(x_min,x_max,y_min,y_max,z_min,z_max,halo_exch
 
   IMPLICIT NONE
 
-  INTEGER      :: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
+  INTEGER      :: x_min,x_max,y_min,y_max,z_min,z_max
   REAL(KIND=8) :: xmin,ymin,zmin,dx,dy,dz
   REAL(KIND=8), DIMENSION(x_min-2:x_max+3) :: vertexx
   REAL(KIND=8), DIMENSION(x_min-2:x_max+3) :: vertexdx

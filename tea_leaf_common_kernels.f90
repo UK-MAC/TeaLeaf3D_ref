@@ -296,7 +296,7 @@ SUBROUTINE tea_leaf_calc_2norm_kernel(x_min, &
 END SUBROUTINE tea_leaf_calc_2norm_kernel
 
 #define COEF_A (-Ky(j, k, l)*ry)
-#define COEF_B (1.0_8 + ry*(Ky(j, k+1, l) + Ky(j, k, l)) + rx*(Kx(j+1, k, l) + Kx(j, k, l)))
+#define COEF_B (1.0_8 + rx*(Kx(j+1, k,   l  ) + Kx(j, k, l)) + ry*(Ky(j,   k+1, l  ) + Ky(j, k, l)) + rz*(Kz(j,   k,   l+1) + Kz(j, k, l)))
 #define COEF_C (-Ky(j, k+1, l)*ry)
 
 SUBROUTINE tea_diag_init(x_min,             &
@@ -319,9 +319,7 @@ SUBROUTINE tea_diag_init(x_min,             &
 !$OMP DO
     DO k=y_min,y_max
       DO j=x_min,x_max
-        Mi(j, k, l) = 1.0_8/(1.0_8                 &
-                + ry*(Ky(j, k+1, l) + Ky(j, k, l))    &
-                + rx*(Kx(j+1, k, l) + Kx(j, k, l)))
+        Mi(j, k, l) = 1.0_8/COEF_B
       ENDDO
     ENDDO
 !$OMP END DO
@@ -337,15 +335,13 @@ SUBROUTINE tea_diag_solve(x_min,             &
                          halo_exchange_depth,             &
                          r,                 &
                          z,                 &
-                         Mi,                &
-                         Kx, Ky, Kz, rx, ry, rz)
+                         Mi)
 
   IMPLICIT NONE
 
   INTEGER(KIND=4):: j, k, l
   INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
-  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: Kx, Ky, Kz, r, z, Mi
-  REAL(KIND=8) :: rx, ry, rz
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: r, z, Mi
 
 !$OMP DO
     DO k=y_min,y_max

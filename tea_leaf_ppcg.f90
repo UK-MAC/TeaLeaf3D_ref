@@ -48,7 +48,7 @@ SUBROUTINE tea_leaf_kernel_ppcg_init_sd(x_min,             &
         halo_exchange_depth, r, z, cp, bfp, Kx, Ky, Kz, rx, ry, rz)
     ELSE IF (preconditioner_type .EQ. TL_PREC_JAC_DIAG) THEN
       CALL tea_diag_solve(x_min, x_max, y_min, y_max, z_min, z_max, &
-        halo_exchange_depth, r, z, Mi, Kx, Ky, Kz, rx, ry, rz)
+        halo_exchange_depth, r, z, Mi)
     ENDIF
 
 !$OMP DO
@@ -82,11 +82,10 @@ SUBROUTINE tea_leaf_kernel_ppcg_inner(x_min,             &
                                       z_min,             &
                                       z_max,             &
                                       halo_exchange_depth,             &
-                                      outer_step,              &
                                       alpha,             &
                                       beta,              &
                                       rx, ry, rz,         &
-                                      ppcg_cur_step, tl_ppcg_inner_steps,   &
+                                      outer_step, tl_ppcg_inner_steps,   &
                                       u,                 &
                                       r,                 &
                                       Kx,                &
@@ -104,11 +103,11 @@ SUBROUTINE tea_leaf_kernel_ppcg_inner(x_min,             &
   INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: u, r, Kx, Ky, sd, kz, z, Mi
   REAL(KIND=8), DIMENSION(x_min:x_max,y_min:y_max,z_min:z_max) :: cp, bfp
-  INTEGER(KIND=4) :: j,k,l, outer_step
+  INTEGER(KIND=4) :: j,k,l
   REAL(KIND=8), DIMENSION(:) :: alpha, beta
   REAL(KIND=8) :: smvp, rx, ry, rz
 
-  INTEGER(KIND=4) :: bounds_extra, ppcg_cur_step, tl_ppcg_inner_steps, inner_step
+  INTEGER(KIND=4) :: bounds_extra, outer_step, tl_ppcg_inner_steps, inner_step
 
   inner_step = outer_step
 
@@ -141,7 +140,7 @@ SUBROUTINE tea_leaf_kernel_ppcg_inner(x_min,             &
         halo_exchange_depth, r, z, cp, bfp, Kx, Ky, Kz, rx, ry, rz)
     ELSE IF (preconditioner_type .EQ. TL_PREC_JAC_DIAG) THEN
       CALL tea_diag_solve(x_min, x_max, y_min, y_max, z_min, z_max, &
-        halo_exchange_depth, r, z, Mi, Kx, Ky, Kz, rx, ry, rz)
+        halo_exchange_depth, r, z, Mi)
     ENDIF
 
 !$OMP DO

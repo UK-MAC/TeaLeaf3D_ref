@@ -306,6 +306,7 @@ FUNCTION parse_getline(dummy)
     INTEGER :: ios
 
     ios=0
+    temp=.FALSE.
 
     SELECT CASE(word)
        CASE('on')

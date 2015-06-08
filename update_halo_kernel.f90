@@ -38,7 +38,7 @@ MODULE update_halo_kernel_module
                             ,FIELD_ENERGY1    = 3         &
                             ,FIELD_U          = 4         &
                             ,FIELD_P          = 5         &
-                            ,FIELD_SD         = 5         &
+                            ,FIELD_SD         = 6         &
                             ,FIELD_R          = 7         &
                             ,NUM_FIELDS       = 7
 
@@ -59,7 +59,7 @@ CONTAINS
 
   INTEGER :: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   LOGICAL :: reflective_boundary
-  INTEGER, DIMENSION(4) :: chunk_neighbours
+  INTEGER, DIMENSION(6) :: chunk_neighbours
   REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: density,energy0,energy1, u, sd, p
 
   INTEGER :: fields(NUM_FIELDS),depth
@@ -114,7 +114,7 @@ SUBROUTINE update_halo_cell(x_min,x_max,y_min,y_max,z_min, z_max, halo_exchange_
   IMPLICIT NONE
 
   INTEGER :: x_min,x_max,y_min,y_max,z_min, z_max, halo_exchange_depth
-  INTEGER, DIMENSION(4) :: chunk_neighbours
+  INTEGER, DIMENSION(6) :: chunk_neighbours
   REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: mesh
 
   INTEGER :: depth

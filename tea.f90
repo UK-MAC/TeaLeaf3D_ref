@@ -75,14 +75,25 @@ SUBROUTINE tea_init_comms
   IMPLICIT NONE
 
   INTEGER :: err,rank,size
+  INTEGER, dimension(3)  :: periodic
+  ! not periodic
+  data periodic/0, 0, 0/
+
+  mpi_dims = 0
 
   rank=0
   size=1
 
   CALL MPI_INIT(err)
+  CALL MPI_COMM_SIZE(mpi_comm_world,size,err)
 
-  CALL MPI_COMM_RANK(MPI_COMM_WORLD,rank,err)
-  CALL MPI_COMM_SIZE(MPI_COMM_WORLD,size,err)
+  ! Create comm and get coords
+  CALL MPI_DIMS_CREATE(size, 3, mpi_dims, err)
+  CALL MPI_CART_CREATE(mpi_comm_world, 3, mpi_dims, periodic, 1, mpi_cart_comm, err)
+
+  CALL MPI_COMM_RANK(mpi_cart_comm,rank,err)
+  CALL MPI_COMM_SIZE(mpi_cart_comm,size,err)
+  CALL MPI_CART_COORDS(mpi_cart_comm, rank, 3, mpi_coords, err)
 
   parallel%parallel=.TRUE.
   parallel%task=rank
@@ -340,7 +351,7 @@ SUBROUTINE tea_exchange(fields,depth)
 !    ELSE
       test_complete = .true.
       !make a call to wait / sync
-!      CALL MPI_WAITALL(message_count_lr,request_lr,status_lr,err)
+      CALL MPI_WAITALL(message_count_lr,request_lr,status_lr,err)
 !    ENDIF
 
     IF (test_complete .eqv. .true.) THEN

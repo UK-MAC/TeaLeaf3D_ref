@@ -32,13 +32,9 @@ SUBROUTINE tea_leaf_kernel_init_cg_fortran(x_min,  &
                            z_min,                  &
                            z_max,                  &
                            halo_exchange_depth,                  &
-                           density,                &
-                           energy,                 &
-                           u,                      &
                            p,                      &
                            r,                      &
                            Mi,                     &
-                           w,                      &
                            z,                      &
                            Kx,                     &
                            Ky,                     &
@@ -55,7 +51,7 @@ SUBROUTINE tea_leaf_kernel_init_cg_fortran(x_min,  &
 
   INTEGER :: preconditioner_type
   INTEGER(KIND=4):: x_min,x_max,y_min,y_max, z_min, z_max,halo_exchange_depth
-  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: u, r, w, Kx, Ky, Kz, z, Mi, density, energy, p
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: r, Kx, Ky, Kz, z, Mi, p
   REAL(KIND=8), DIMENSION(x_min:x_max,y_min:y_max,z_min:z_max) :: cp, bfp
 
   INTEGER(KIND=4) :: j,k,l
@@ -84,7 +80,7 @@ SUBROUTINE tea_leaf_kernel_init_cg_fortran(x_min,  &
         halo_exchange_depth, r, z, cp, bfp, Kx, Ky, Kz, rx, ry, rz)
     ELSE IF (preconditioner_type .EQ. TL_PREC_JAC_DIAG) THEN
       CALL tea_diag_solve(x_min, x_max, y_min, y_max, z_min, z_max, &
-        halo_exchange_depth, r, z, Mi, Kx, Ky, Kz, rx, ry, rz)
+        halo_exchange_depth, r, z, Mi)
     ENDIF
 
 !$OMP DO
@@ -233,7 +229,7 @@ SUBROUTINE tea_leaf_kernel_solve_cg_fortran_calc_ur(x_min,             &
         halo_exchange_depth, r, z, cp, bfp, Kx, Ky, Kz, rx, ry, rz)
     ELSE IF (preconditioner_type .EQ. TL_PREC_JAC_DIAG) THEN
       CALL tea_diag_solve(x_min, x_max, y_min, y_max, z_min, z_max, &
-        halo_exchange_depth, r, z, Mi, Kx, Ky, Kz, rx, ry, rz)
+        halo_exchange_depth, r, z, Mi)
     ENDIF
 
 !$OMP DO REDUCTION(+:rrn)

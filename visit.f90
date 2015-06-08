@@ -29,7 +29,6 @@ SUBROUTINE visit
 
   INTEGER :: j,k,l,c,err,get_unit,u,dummy
   INTEGER :: nxc,nyc,nzc,nxv,nyv,nzv,nblocks
-  REAL(KIND=8)    :: temp_var
 
   CHARACTER(len=80)           :: name
   CHARACTER(len=10)           :: chunk_name,step_name

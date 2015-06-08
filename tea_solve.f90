@@ -183,13 +183,9 @@ SUBROUTINE tea_leaf()
               chunks(c)%field%z_min,                       &
               chunks(c)%field%z_max,                       &
               halo_exchange_depth,                       &
-              chunks(c)%field%density,                    &
-              chunks(c)%field%energy1,                     &
-              chunks(c)%field%u,                           &
               chunks(c)%field%vector_p,                 &
               chunks(c)%field%vector_r,                 &
               chunks(c)%field%vector_Mi,                 &
-              chunks(c)%field%vector_w,                 &
               chunks(c)%field%vector_z,                 &
               chunks(c)%field%vector_Kx,                 &
               chunks(c)%field%vector_Ky,                 &
@@ -824,7 +820,6 @@ SUBROUTINE tea_leaF_run_ppcg_inner_steps(ch_alphas, ch_betas, theta, &
           chunks(c)%field%z_min,                            &
           chunks(c)%field%z_max,                            &
           halo_exchange_depth,                            &
-          ppcg_cur_step,                                    &
           ch_alphas, ch_betas,                              &
           rx, ry, rz,                                       &
           ppcg_cur_step, tl_ppcg_inner_steps,   &
@@ -897,8 +892,7 @@ SUBROUTINE tea_leaf_cheby_first_step(c, ch_alphas, ch_betas, fields, &
           chunks(c)%field%vector_Kz,                      &
           chunks(c)%field%tri_cp,   &
           chunks(c)%field%tri_bfp,    &
-          ch_alphas, ch_betas, max_cheby_iters,           &
-          rx, ry, rz, theta, error, tl_preconditioner_type)
+          rx, ry, rz, theta, tl_preconditioner_type)
   ENDIF
 
   IF (profiler_on) halo_time = timer()

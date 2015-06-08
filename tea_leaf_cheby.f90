@@ -46,14 +46,10 @@ SUBROUTINE tea_leaf_kernel_cheby_init(x_min,  &
                            Kz,                &
                            cp,                     &
                            bfp,                     &
-                           ch_alphas,         &
-                           ch_betas,          &
-                           max_cheby_iters,   &
                            rx,                &
                            ry,                &
                            rz,                &
                            theta,             &
-                           error,             &
                            preconditioner_type)
   IMPLICIT NONE
 
@@ -62,9 +58,8 @@ SUBROUTINE tea_leaf_kernel_cheby_init(x_min,  &
   REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: u, u0, p , w , r, Mi, z , Kx, Ky, Kz
   REAL(KIND=8), DIMENSION(x_min:x_max,y_min:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: cp, bfp
 
-  INTEGER :: j,k,l, max_cheby_iters
-  REAL(KIND=8) ::  rx, ry, rz, error, theta
-  REAL(KIND=8), DIMENSION(max_cheby_iters) :: ch_alphas, ch_betas
+  INTEGER :: j,k,l
+  REAL(KIND=8) ::  rx, ry, rz, theta
 
 !$OMP PARALLEL
 !$OMP DO
@@ -91,7 +86,7 @@ SUBROUTINE tea_leaf_kernel_cheby_init(x_min,  &
         halo_exchange_depth, r, z, cp, bfp, Kx, Ky, Kz, rx, ry, rz)
     ELSE IF (preconditioner_type .EQ. TL_PREC_JAC_DIAG) THEN
       CALL tea_diag_solve(x_min, x_max, y_min, y_max, z_min, z_max, &
-        halo_exchange_depth, r, z, Mi, Kx, Ky, Kz, rx, ry, rz)
+        halo_exchange_depth, r, z, Mi)
     ENDIF
 
 !$OMP DO
@@ -194,7 +189,7 @@ SUBROUTINE tea_leaf_kernel_cheby_iterate(x_min, &
         halo_exchange_depth, r, z, cp, bfp, Kx, Ky, Kz, rx, ry, rz)
     ELSE IF (preconditioner_type .EQ. TL_PREC_JAC_DIAG) THEN
       CALL tea_diag_solve(x_min, x_max, y_min, y_max, z_min, z_max, &
-        halo_exchange_depth, r, z, Mi, Kx, Ky, Kz, rx, ry, rz)
+        halo_exchange_depth, r, z, Mi)
     ENDIF
 
 !$OMP DO
