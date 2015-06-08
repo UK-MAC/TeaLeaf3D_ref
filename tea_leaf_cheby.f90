@@ -27,79 +27,46 @@ IMPLICIT NONE
 
 CONTAINS
 
-SUBROUTINE tea_leaf_calc_2norm_kernel(x_min, &
-                          x_max,             &
-                          y_min,             &
-                          y_max,             &
-                          z_min,             &
-                          z_max,             &
-                          arr,               &
-                          norm)
-
-  IMPLICIT NONE
-
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: arr
-  REAL(KIND=8) :: norm
-  integer :: j,k,l
-
-  norm = 0.0_8
-
-!$OMP PARALLEL
-!$OMP DO REDUCTION(+:norm)
-  DO l=z_min,z_max
-    DO k=y_min,y_max
-        DO j=x_min,x_max
-            norm = norm + arr(j, k, l)*arr(j, k, l)
-        ENDDO
-    ENDDO
-  ENDDO
-!$OMP END DO
-!$OMP END PARALLEL
-
-end SUBROUTINE tea_leaf_calc_2norm_kernel
-
-SUBROUTINE tea_leaf_kernel_cheby_init(x_min,             &
+SUBROUTINE tea_leaf_kernel_cheby_init(x_min,  &
                            x_max,             &
                            y_min,             &
                            y_max,             &
                            z_min,             &
                            z_max,             &
-                           u,                &
+                           halo_exchange_depth,             &
+                           u,                 &
                            u0,                &
-                           p,                &
-                           r,            &
-                           Mi,            &
-                           w,     &
-                           z,            &
+                           p,                 &
+                           r,                 &
+                           Mi,                &
+                           w,                 &
+                           z,                 &
                            Kx,                &
-                           Ky,  &
-                           Kz,  &
-                           ch_alphas, &
-                           ch_betas, &
-                           max_cheby_iters, &
-                           rx, &
-                           ry, &
-                           rz, &
-                           theta, &
-                           error, &
+                           Ky,                &
+                           Kz,                &
+                           cp,                     &
+                           bfp,                     &
+                           ch_alphas,         &
+                           ch_betas,          &
+                           max_cheby_iters,   &
+                           rx,                &
+                           ry,                &
+                           rz,                &
+                           theta,             &
+                           error,             &
                            preconditioner_type)
   IMPLICIT NONE
 
-  LOGICAL :: preconditioner_type
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u0
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: w
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: p, r, Mi, z
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: Kx, Ky, Kz
+  INTEGER :: preconditioner_type
+  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: u, u0, p , w , r, Mi, z , Kx, Ky, Kz
+  REAL(KIND=8), DIMENSION(x_min:x_max,y_min:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: cp, bfp
 
   INTEGER :: j,k,l, max_cheby_iters
-  REAL(KIND=8) ::  rx, ry, error, theta, rz
+  REAL(KIND=8) ::  rx, ry, rz, error, theta
   REAL(KIND=8), DIMENSION(max_cheby_iters) :: ch_alphas, ch_betas
 
 !$OMP PARALLEL
-  IF (preconditioner_type) THEN
 !$OMP DO
   DO l=z_min,z_max
     DO k=y_min,y_max
@@ -112,31 +79,40 @@ SUBROUTINE tea_leaf_kernel_cheby_init(x_min,             &
                 - ry*(Ky(j, k+1, l)*u(j, k+1, l) + Ky(j, k, l)*u(j, k-1, l))  &
                 - rz*(Kz(j, k, l+1)*u(j, k, l+1) + Kz(j, k, l)*u(j, k, l-1))
             r(j, k, l) = u0(j, k, l) - w(j, k, l)
-
-            p(j, k, l) = (Mi(j, k, l)*r(j, k, l))/theta
         ENDDO
     ENDDO
   ENDDO
 !$OMP END DO
+
+  IF (preconditioner_type .NE. TL_PREC_NONE) THEN
+
+    IF (preconditioner_type .EQ. TL_PREC_JAC_BLOCK) THEN
+      CALL tea_block_solve(x_min, x_max, y_min, y_max, z_min, z_max,    &
+        halo_exchange_depth, r, z, cp, bfp, Kx, Ky, Kz, rx, ry, rz)
+    ELSE IF (preconditioner_type .EQ. TL_PREC_JAC_DIAG) THEN
+      CALL tea_diag_solve(x_min, x_max, y_min, y_max, z_min, z_max, &
+        halo_exchange_depth, r, z, Mi, Kx, Ky, Kz, rx, ry, rz)
+    ENDIF
+
+!$OMP DO
+  DO l=z_min,z_max
+    DO k=y_min,y_max
+      DO j=x_min,x_max
+        p(j, k, l) = z(j, k, l)/theta
+      ENDDO
+    ENDDO
+  ENDDO
+!$OMP END DO NOWAIT
   ELSE
 !$OMP DO
   DO l=z_min,z_max
     DO k=y_min,y_max
         DO j=x_min,x_max
-            w(j, k, l) = (1.0_8                                      &
-                + rx*(Kx(j+1, k, l) + Kx(j, k, l)) &
-                + ry*(Ky(j, k+1, l) + Ky(j, k, l))                      &
-                + rz*(Kz(j, k, l+1) + Kz(j, k, l)))*u(j, k, l)             &
-                - rx*(Kx(j+1, k, l)*u(j+1, k, l) + Kx(j, k, l)*u(j-1, k, l)) &
-                - ry*(Ky(j, k+1, l)*u(j, k+1, l) + Ky(j, k, l)*u(j, k-1, l))  &
-                - rz*(Kz(j, k, l+1)*u(j, k, l+1) + Kz(j, k, l)*u(j, k, l-1))
-            r(j, k, l) = u0(j, k, l) - w(j, k, l)
-
             p(j, k, l) = r(j, k, l)/theta
         ENDDO
     ENDDO
   ENDDO
-!$OMP END DO
+!$OMP END DO NOWAIT
   ENDIF
 !$OMP DO
   DO l=z_min,z_max
@@ -151,40 +127,40 @@ SUBROUTINE tea_leaf_kernel_cheby_init(x_min,             &
 
 END SUBROUTINE
 
-SUBROUTINE tea_leaf_kernel_cheby_iterate(x_min,             &
-                           x_max,             &
-                           y_min,             &
-                           y_max,             &
-                           z_min,             &
-                           z_max,             &
-                           u,                &
-                           u0,                &
-                           p,                &
-                           r,            &
-                           Mi,            &
-                           w,     &
-                           z,            &
-                           Kx,                &
-                           Ky,  &
-                           Kz,  &
-                           ch_alphas, &
-                           ch_betas, &
-                           max_cheby_iters, &
-                           rx, &
-                           ry, &
-                           rz, &
-                           step, &
+SUBROUTINE tea_leaf_kernel_cheby_iterate(x_min, &
+                           x_max,               &
+                           y_min,               &
+                           y_max,               &
+                           z_min,               &
+                           z_max,               &
+                           halo_exchange_depth,               &
+                           u,                   &
+                           u0,                  &
+                           p,                   &
+                           r,                   &
+                           Mi,                  &
+                           w                ,   &
+                           z,                   &
+                           Kx,                  &
+                           Ky,                  &
+                           Kz,                  &
+                           cp,   &
+                           bfp,    &
+                           ch_alphas,           &
+                           ch_betas,            &
+                           max_cheby_iters,     &
+                           rx,                  &
+                           ry,                  &
+                           rz,                  &
+                           step,                &
                            preconditioner_type)
 
   IMPLICIT NONE
 
-  LOGICAL :: preconditioner_type
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u0
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: w
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: p, r, Mi, z
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: Kx, Ky, Kz
+  INTEGER :: preconditioner_type
+  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: u, u0, p , w , r, Mi, z , Kx, Ky
+  REAL(KIND=8), DIMENSION(x_min:x_max,y_min:y_max,z_min:z_max):: cp, bfp
 
   INTEGER :: j,k,l
 
@@ -194,7 +170,6 @@ SUBROUTINE tea_leaf_kernel_cheby_iterate(x_min,             &
     REAL(KIND=8), DIMENSION(max_cheby_iters) :: ch_alphas, ch_betas
 
 !$OMP PARALLEL
-  IF (preconditioner_type) THEN
 !$OMP DO
   DO l=z_min,z_max
     DO k=y_min,y_max
@@ -207,31 +182,40 @@ SUBROUTINE tea_leaf_kernel_cheby_iterate(x_min,             &
                 - ry*(Ky(j, k+1, l)*u(j, k+1, l) + Ky(j, k, l)*u(j, k-1, l))  &
                 - rz*(Kz(j, k, l+1)*u(j, k, l+1) + Kz(j, k, l)*u(j, k, l-1))
             r(j, k, l) = u0(j, k, l) - w(j, k, l)
-
-            p(j, k, l) = ch_alphas(step)*p(j, k, l) + ch_betas(step)*Mi(j, k, l)*r(j, k, l)
         ENDDO
     ENDDO
   ENDDO
 !$OMP END DO
+
+  IF (preconditioner_type .NE. TL_PREC_NONE) THEN
+
+    IF (preconditioner_type .EQ. TL_PREC_JAC_BLOCK) THEN
+      CALL tea_block_solve(x_min, x_max, y_min, y_max, z_min, z_max,    &
+        halo_exchange_depth, r, z, cp, bfp, Kx, Ky, Kz, rx, ry, rz)
+    ELSE IF (preconditioner_type .EQ. TL_PREC_JAC_DIAG) THEN
+      CALL tea_diag_solve(x_min, x_max, y_min, y_max, z_min, z_max, &
+        halo_exchange_depth, r, z, Mi, Kx, Ky, Kz, rx, ry, rz)
+    ENDIF
+
+!$OMP DO
+  DO l=z_min,z_max
+    DO k=y_min,y_max
+      DO j=x_min,x_max
+        p(j, k, l) = ch_alphas(step)*p(j, k, l) + ch_betas(step)*z(j, k, l)
+      ENDDO
+    ENDDO
+  ENDDO
+!$OMP END DO NOWAIT
   ELSE
 !$OMP DO
   DO l=z_min,z_max
     DO k=y_min,y_max
-        DO j=x_min,x_max
-            w(j, k, l) = (1.0_8                                      &
-                + rx*(Kx(j+1, k, l) + Kx(j, k, l)) &
-                + ry*(Ky(j, k+1, l) + Ky(j, k, l))                      &
-                + rz*(Kz(j, k, l+1) + Kz(j, k, l)))*u(j, k, l)             &
-                - rx*(Kx(j+1, k, l)*u(j+1, k, l) + Kx(j, k, l)*u(j-1, k, l)) &
-                - ry*(Ky(j, k+1, l)*u(j, k+1, l) + Ky(j, k, l)*u(j, k-1, l))  &
-                - rz*(Kz(j, k, l+1)*u(j, k, l+1) + Kz(j, k, l)*u(j, k, l-1))
-            r(j, k, l) = u0(j, k, l) - w(j, k, l)
-
-            p(j, k, l) = ch_alphas(step)*p(j, k, l) + ch_betas(step)*r(j, k, l)
-        ENDDO
+      DO j=x_min,x_max
+        p(j, k, l) = ch_alphas(step)*p(j, k, l) + ch_betas(step)*r(j, k, l)
+      ENDDO
     ENDDO
   ENDDO
-!$OMP END DO
+!$OMP END DO NOWAIT
   ENDIF
 !$OMP DO
   DO l=z_min,z_max
@@ -241,36 +225,10 @@ SUBROUTINE tea_leaf_kernel_cheby_iterate(x_min,             &
         ENDDO
     ENDDO
   ENDDO
-!$OMP END DO
+!$OMP END DO NOWAIT
 !$OMP END PARALLEL
 
 END SUBROUTINE tea_leaf_kernel_cheby_iterate
-
-SUBROUTINE tea_leaf_kernel_cheby_copy_u(x_min,             &
-                           x_max,             &
-                           y_min,             &
-                           y_max,             &
-                           z_min,             &
-                           z_max,             &
-                           u0, u)
-  IMPLICIT NONE
-
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u, u0
-  INTEGER(KIND=4) :: j,k,l
-
-!$OMP PARALLEL
-!$OMP DO
-  DO l=z_min,z_max
-    DO k=y_min,y_max
-        DO j=x_min,x_max
-            u0(j, k, l) = u(j, k, l)
-        ENDDO
-    ENDDO
-  ENDDO
-!$OMP END DO
-!$OMP END PARALLEL
-end SUBROUTINE
 
 SUBROUTINE tqli(d,e,n, info)
     ! http://physics.sharif.edu/~jafari/fortran-codes/lanczos/tqli.f90

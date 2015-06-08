@@ -23,7 +23,7 @@ MODULE pack_kernel_module
 
 CONTAINS
 
-SUBROUTINE tea_pack_message_left(x_min,x_max,y_min,y_max,z_min,z_max,field,                 &
+SUBROUTINE tea_pack_message_left(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                 &
                                     left_snd_buffer,                                           &
                                     CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                     depth,field_type,                                          &
@@ -35,7 +35,7 @@ SUBROUTINE tea_pack_message_left(x_min,x_max,y_min,y_max,z_min,z_max,field,     
   REAL(KIND=8) :: left_snd_buffer(:)
 
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Pack 
@@ -83,7 +83,7 @@ SUBROUTINE tea_pack_message_left(x_min,x_max,y_min,y_max,z_min,z_max,field,     
 
 END SUBROUTINE tea_pack_message_left
 
-SUBROUTINE tea_unpack_message_left(x_min,x_max,y_min,y_max,z_min,z_max,field,                 &
+SUBROUTINE tea_unpack_message_left(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                 &
                                       left_rcv_buffer,                                           &
                                       CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                       depth,field_type,                                          &
@@ -95,7 +95,7 @@ SUBROUTINE tea_unpack_message_left(x_min,x_max,y_min,y_max,z_min,z_max,field,   
   REAL(KIND=8) :: left_rcv_buffer(:)
 
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Unpack 
@@ -140,7 +140,7 @@ SUBROUTINE tea_unpack_message_left(x_min,x_max,y_min,y_max,z_min,z_max,field,   
 
 END SUBROUTINE tea_unpack_message_left
 
-SUBROUTINE tea_pack_message_right(x_min,x_max,y_min,y_max,z_min,z_max,field,                 &
+SUBROUTINE tea_pack_message_right(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                 &
                                      right_snd_buffer,                                          &
                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                      depth,field_type,                                          &
@@ -152,7 +152,7 @@ SUBROUTINE tea_pack_message_right(x_min,x_max,y_min,y_max,z_min,z_max,field,    
   REAL(KIND=8) :: right_snd_buffer(:)
 
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Pack 
@@ -197,7 +197,7 @@ SUBROUTINE tea_pack_message_right(x_min,x_max,y_min,y_max,z_min,z_max,field,    
 
 END SUBROUTINE tea_pack_message_right
 
-SUBROUTINE tea_unpack_message_right(x_min,x_max,y_min,y_max,z_min,z_max,field,                 &
+SUBROUTINE tea_unpack_message_right(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                 &
                                        right_rcv_buffer,                                          &
                                        CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                        depth,field_type,                                          &
@@ -209,7 +209,7 @@ SUBROUTINE tea_unpack_message_right(x_min,x_max,y_min,y_max,z_min,z_max,field,  
   REAL(KIND=8) :: right_rcv_buffer(:)
 
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Unpack 
@@ -254,7 +254,7 @@ SUBROUTINE tea_unpack_message_right(x_min,x_max,y_min,y_max,z_min,z_max,field,  
 
 END SUBROUTINE tea_unpack_message_right
 
-SUBROUTINE tea_pack_message_top(x_min,x_max,y_min,y_max,z_min,z_max,field,                 &
+SUBROUTINE tea_pack_message_top(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                 &
                                    top_snd_buffer,                                            &
                                    CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                    depth,field_type,                                          &
@@ -266,7 +266,7 @@ SUBROUTINE tea_pack_message_top(x_min,x_max,y_min,y_max,z_min,z_max,field,      
   REAL(KIND=8) :: top_snd_buffer(:)
 
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Pack 
@@ -314,7 +314,7 @@ SUBROUTINE tea_pack_message_top(x_min,x_max,y_min,y_max,z_min,z_max,field,      
 
 END SUBROUTINE tea_pack_message_top
 
-SUBROUTINE tea_unpack_message_top(x_min,x_max,y_min,y_max,z_min,z_max,field,                 &
+SUBROUTINE tea_unpack_message_top(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                 &
                                      top_rcv_buffer,                                            &
                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                      depth,field_type,                                          &
@@ -326,7 +326,7 @@ SUBROUTINE tea_unpack_message_top(x_min,x_max,y_min,y_max,z_min,z_max,field,    
   REAL(KIND=8) :: top_rcv_buffer(:)
 
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Unpack 
@@ -371,7 +371,7 @@ SUBROUTINE tea_unpack_message_top(x_min,x_max,y_min,y_max,z_min,z_max,field,    
 
 END SUBROUTINE tea_unpack_message_top
 
-SUBROUTINE tea_pack_message_bottom(x_min,x_max,y_min,y_max,z_min,z_max,field,                 &
+SUBROUTINE tea_pack_message_bottom(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                 &
                                       bottom_snd_buffer,                                         &
                                       CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                       depth,field_type,                                          &
@@ -383,7 +383,7 @@ SUBROUTINE tea_pack_message_bottom(x_min,x_max,y_min,y_max,z_min,z_max,field,   
   REAL(KIND=8) :: bottom_snd_buffer(:)
 
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Pack 
@@ -428,7 +428,7 @@ SUBROUTINE tea_pack_message_bottom(x_min,x_max,y_min,y_max,z_min,z_max,field,   
 
 END SUBROUTINE tea_pack_message_bottom
 
-SUBROUTINE tea_unpack_message_bottom(x_min,x_max,y_min,y_max,z_min,z_max,field,                 &
+SUBROUTINE tea_unpack_message_bottom(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                 &
                                         bottom_rcv_buffer,                                         &
                                         CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                         depth,field_type,                                          &
@@ -440,7 +440,7 @@ SUBROUTINE tea_unpack_message_bottom(x_min,x_max,y_min,y_max,z_min,z_max,field, 
   REAL(KIND=8) :: bottom_rcv_buffer(:)
 
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Unpack 
@@ -485,7 +485,7 @@ SUBROUTINE tea_unpack_message_bottom(x_min,x_max,y_min,y_max,z_min,z_max,field, 
 
 END SUBROUTINE tea_unpack_message_bottom
 
-SUBROUTINE tea_pack_message_back(x_min,x_max,y_min,y_max,z_min,z_max,field,                 &
+SUBROUTINE tea_pack_message_back(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                 &
                                     back_snd_buffer,                                           &
                                     CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                     depth,field_type,                                          &
@@ -497,7 +497,7 @@ SUBROUTINE tea_pack_message_back(x_min,x_max,y_min,y_max,z_min,z_max,field,     
   REAL(KIND=8) :: back_snd_buffer(:)
 
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Pack 
@@ -545,7 +545,7 @@ SUBROUTINE tea_pack_message_back(x_min,x_max,y_min,y_max,z_min,z_max,field,     
 
 END SUBROUTINE tea_pack_message_back
 
-SUBROUTINE tea_unpack_message_back(x_min,x_max,y_min,y_max,z_min,z_max,field,                 &
+SUBROUTINE tea_unpack_message_back(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                 &
                                       back_rcv_buffer,                                           &
                                       CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                       depth,field_type,                                          &
@@ -557,7 +557,7 @@ SUBROUTINE tea_unpack_message_back(x_min,x_max,y_min,y_max,z_min,z_max,field,   
   REAL(KIND=8) :: back_rcv_buffer(:)
 
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Unpack 
@@ -602,7 +602,7 @@ SUBROUTINE tea_unpack_message_back(x_min,x_max,y_min,y_max,z_min,z_max,field,   
 
 END SUBROUTINE tea_unpack_message_back
 
-SUBROUTINE tea_pack_message_front(x_min,x_max,y_min,y_max,z_min,z_max,field,                 &
+SUBROUTINE tea_pack_message_front(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                 &
                                      front_snd_buffer,                                          &
                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                      depth,field_type,                                          &
@@ -613,7 +613,7 @@ SUBROUTINE tea_pack_message_front(x_min,x_max,y_min,y_max,z_min,z_max,field,    
   REAL(KIND=8) :: field(-1:,-1:,-1:) ! This seems to work for any type of mesh data
   REAL(KIND=8) :: front_snd_buffer(:)
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Pack 
@@ -658,7 +658,7 @@ SUBROUTINE tea_pack_message_front(x_min,x_max,y_min,y_max,z_min,z_max,field,    
 
 END SUBROUTINE tea_pack_message_front
 
-SUBROUTINE tea_unpack_message_front(x_min,x_max,y_min,y_max,z_min,z_max,field,                &
+SUBROUTINE tea_unpack_message_front(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,field,                &
                                       front_rcv_buffer,                                          &
                                       CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
                                       depth,field_type,                                          &
@@ -669,7 +669,7 @@ SUBROUTINE tea_unpack_message_front(x_min,x_max,y_min,y_max,z_min,z_max,field,  
   REAL(KIND=8) :: field(-1:,-1:,-1:) ! This seems to work for any type of mesh data
   REAL(KIND=8) :: front_rcv_buffer(:)
   INTEGER      :: CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA
-  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER      :: depth,field_type,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
   ! Unpack 

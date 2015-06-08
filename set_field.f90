@@ -46,6 +46,7 @@ SUBROUTINE set_field()
                               chunks(c)%field%y_max,     &
                               chunks(c)%field%z_min,     &
                               chunks(c)%field%z_max,     &
+                              halo_exchange_depth,     &
                               chunks(c)%field%energy0,   &
                               chunks(c)%field%energy1)
       ENDIF

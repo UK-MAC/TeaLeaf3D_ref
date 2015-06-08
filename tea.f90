@@ -307,7 +307,8 @@ SUBROUTINE tea_exchange(fields,depth)
 
     IF(chunks(chunk)%chunk_neighbours(chunk_left).NE.external_face) THEN
       ! do left exchanges
-        CALL tea_pack_left(chunk, fields, depth, left_right_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_LEFT, &
+        chunks(chunk)%left_snd_buffer, left_right_offset)
 
       !send and recv messagse to the left
       CALL tea_send_recv_message_left(chunks(chunk)%left_snd_buffer,                      &
@@ -320,7 +321,8 @@ SUBROUTINE tea_exchange(fields,depth)
 
     IF(chunks(chunk)%chunk_neighbours(chunk_right).NE.external_face) THEN
       ! do right exchanges
-        CALL tea_pack_right(chunk, fields, depth, left_right_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_RIGHT, &
+        chunks(chunk)%right_snd_buffer, left_right_offset)
 
       !send message to the right
       CALL tea_send_recv_message_right(chunks(chunk)%right_snd_buffer,                     &
@@ -336,30 +338,29 @@ SUBROUTINE tea_exchange(fields,depth)
 !      ! don't have to transfer now
 !      CALL MPI_TESTALL(message_count_lr, request_lr, test_complete, status_lr, err)
 !    ELSE
-!      test_complete = .true.
+      test_complete = .true.
       !make a call to wait / sync
-      CALL MPI_WAITALL(message_count_lr,request_lr,status_lr,err)
+!      CALL MPI_WAITALL(message_count_lr,request_lr,status_lr,err)
 !    ENDIF
 
-    !unpack in left direction
-    IF(chunks(chunk)%chunk_neighbours(chunk_left).NE.external_face) THEN
-      else
-        CALL tea_unpack_left(fields, chunk, depth,                      &
-                                chunks(chunk)%left_rcv_buffer,             &
-                                left_right_offset)
-    ENDIF
+    IF (test_complete .eqv. .true.) THEN
+      !unpack in left direction
+      IF(chunks(chunk)%chunk_neighbours(chunk_left).NE.external_face) THEN
+        CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_LEFT, &
+          chunks(chunk)%left_rcv_buffer, left_right_offset)
+      ENDIF
 
-    !unpack in right direction
-    IF(chunks(chunk)%chunk_neighbours(chunk_right).NE.external_face) THEN
-        CALL tea_unpack_right(fields, chunk, depth,                     &
-                                 chunks(chunk)%right_rcv_buffer,           &
-                                 left_right_offset)
+      !unpack in right direction
+      IF(chunks(chunk)%chunk_neighbours(chunk_right).NE.external_face) THEN
+        CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_RIGHT, &
+          chunks(chunk)%right_rcv_buffer, left_right_offset)
+      ENDIF
     ENDIF
-
 
     IF(chunks(chunk)%chunk_neighbours(chunk_bottom).NE.external_face) THEN
       ! do bottom exchanges
-        CALL tea_pack_bottom(chunk, fields, depth, bottom_top_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_BOTTOM, &
+        chunks(chunk)%bottom_snd_buffer, bottom_top_offset)
 
       !send message downwards
       CALL tea_send_recv_message_bottom(chunks(chunk)%bottom_snd_buffer,                     &
@@ -372,7 +373,8 @@ SUBROUTINE tea_exchange(fields,depth)
 
     IF(chunks(chunk)%chunk_neighbours(chunk_top).NE.external_face) THEN
       ! do top exchanges
-        CALL tea_pack_top(chunk, fields, depth, bottom_top_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_TOP, &
+        chunks(chunk)%top_snd_buffer, bottom_top_offset)
 
       !send message upwards
       CALL tea_send_recv_message_top(chunks(chunk)%top_snd_buffer,                           &
@@ -388,16 +390,14 @@ SUBROUTINE tea_exchange(fields,depth)
 
     !unpack in top direction
     IF( chunks(chunk)%chunk_neighbours(chunk_top).NE.external_face ) THEN
-        CALL tea_unpack_top(fields, chunk, depth,                       &
-                               chunks(chunk)%top_rcv_buffer,               &
-                               bottom_top_offset)
+      CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_TOP, &
+        chunks(chunk)%top_rcv_buffer, bottom_top_offset)
     ENDIF
 
     !unpack in bottom direction
     IF(chunks(chunk)%chunk_neighbours(chunk_bottom).NE.external_face) THEN
-        CALL tea_unpack_bottom(fields, chunk, depth,                   &
-                                 chunks(chunk)%bottom_rcv_buffer,         &
-                                 bottom_top_offset)
+      CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_BOTTOM, &
+        chunks(chunk)%bottom_rcv_buffer, bottom_top_offset)
     ENDIF
 
     IF(chunks(chunk)%chunk_neighbours(chunk_back).NE.external_face) THEN

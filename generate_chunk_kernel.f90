@@ -27,7 +27,7 @@ MODULE generate_chunk_kernel_module
 
 CONTAINS
 
-SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max,z_min,z_max, &
+SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth, &
                                  vertexx,                 &
                                  vertexy,                 &
                                  vertexz,                 &
@@ -54,7 +54,7 @@ SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max,z_min,z_max, &
 
   IMPLICIT NONE
 
-  INTEGER      :: x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER(KIND=4)      :: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   REAL(KIND=8), DIMENSION(x_min-2:x_max+3) :: vertexx
   REAL(KIND=8), DIMENSION(y_min-2:y_max+3) :: vertexy
   REAL(KIND=8), DIMENSION(z_min-2:z_max+3) :: vertexz

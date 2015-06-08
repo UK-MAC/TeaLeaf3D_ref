@@ -24,13 +24,13 @@ MODULE set_field_kernel_module
 
 CONTAINS
 
-SUBROUTINE set_field_kernel(x_min,x_max,y_min,y_max,z_min, z_max, &
-                              energy0,            &
-                              energy1)
+SUBROUTINE set_field_kernel(x_min,x_max,y_min,y_max,z_min, z_max,halo_exchange_depth,   &
+                            energy0,            &
+                            energy1)
 
   IMPLICIT NONE
 
-  INTEGER :: x_min,x_max,y_min,y_max,z_min,z_max
+  INTEGER :: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: energy0,energy1
 
   INTEGER :: j,k,l

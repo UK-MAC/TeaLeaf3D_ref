@@ -23,7 +23,7 @@ MODULE field_summary_kernel_module
 
 CONTAINS
 
-SUBROUTINE field_summary_kernel(x_min,x_max,y_min,y_max,z_min,z_max,&
+SUBROUTINE field_summary_kernel(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth,&
                                 volume,                  &
                                 density,                 &
                                 energy1,                 &

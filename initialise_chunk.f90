@@ -47,6 +47,7 @@ SUBROUTINE initialise_chunk(chunk)
                                  chunks(chunk)%field%y_max,    &
                                  chunks(chunk)%field%z_min,    &
                                  chunks(chunk)%field%z_max,    &
+                                 halo_exchange_depth,    &
                                  xmin,ymin,zmin,dx,dy,dz,      &
                                  chunks(chunk)%field%vertexx,  &
                                  chunks(chunk)%field%vertexdx, &
