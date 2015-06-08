@@ -197,9 +197,6 @@ MODULE definitions_module
      REAL(KIND=8),ALLOCATABLE:: left_rcv_buffer(:),right_rcv_buffer(:)
      REAL(KIND=8),ALLOCATABLE:: bottom_rcv_buffer(:),top_rcv_buffer(:)
      REAL(KIND=8),ALLOCATABLE:: back_rcv_buffer(:),front_rcv_buffer(:)
-     REAL(KIND=8),ALLOCATABLE:: left_snd_buffer(:),right_snd_buffer(:)
-     REAL(KIND=8),ALLOCATABLE:: bottom_snd_buffer(:),top_snd_buffer(:)
-     REAL(KIND=8),ALLOCATABLE:: back_snd_buffer(:),front_snd_buffer(:)
 
      TYPE(field_type):: field
 

@@ -77,7 +77,7 @@ SUBROUTINE field_summary()
 !$  IF(OMP_GET_THREAD_NUM().EQ.0) THEN
       WRITE(g_out,'(a6,i7,5e26.17)')' step:',step,vol,mass,mass/vol,ie,temp
       WRITE(g_out,*)
-      call flush(g_out)
+      CALL FLUSH(g_out)
 !$  ENDIF
   ENDIF
 

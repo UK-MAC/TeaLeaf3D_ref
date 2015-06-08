@@ -41,7 +41,6 @@ SUBROUTINE update_halo(fields,depth)
   IF (reflective_boundary .eqv. .TRUE.) THEN
     IF (profiler_on) halo_time=timer()
     DO c=1,chunks_per_task
-
       IF(chunks(c)%task.EQ.parallel%task) THEN
         IF(use_fortran_kernels)THEN
           CALL update_halo_kernel(chunks(c)%field%x_min,          &
@@ -61,8 +60,6 @@ SUBROUTINE update_halo(fields,depth)
                                   depth                           )
         ENDIF
       ENDIF
-    ENDIF
-
     ENDDO
     IF (profiler_on) profiler%halo_update = profiler%halo_update + (timer() - halo_time)
   ENDIF
