@@ -29,6 +29,8 @@ MODULE update_halo_kernel_module
                             ,CHUNK_RIGHT  =2    &
                             ,CHUNK_BOTTOM =3    &
                             ,CHUNK_TOP    =4    &
+                            ,CHUNK_BACK   =5    &
+                            ,CHUNK_FRONT  =6    &
                             ,EXTERNAL_FACE=-1
 
   INTEGER,private,PARAMETER :: FIELD_DENSITY    = 1         &
@@ -36,8 +38,9 @@ MODULE update_halo_kernel_module
                             ,FIELD_ENERGY1    = 3         &
                             ,FIELD_U          = 4         &
                             ,FIELD_P          = 5         &
-                            ,FIELD_SD         = 6         &
-                            ,NUM_FIELDS       = 6
+                            ,FIELD_SD         = 5         &
+                            ,FIELD_R          = 7         &
+                            ,NUM_FIELDS       = 7
 
 CONTAINS
 

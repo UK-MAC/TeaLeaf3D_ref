@@ -208,11 +208,11 @@ SUBROUTINE tea_allocate_buffers(chunk)
 
   INTEGER           :: allocate_extra_size
 
-  allocate_extra_size = max(2, halo_allocate_depth)
+  allocate_extra_size = max(2, halo_exchange_depth)
 
-  lr_size = num_buffered*(chunks(chunk)%field%y_max + 2*allocate_extra_size)*(chunks(chunk)%field%z_max + 2*allocate_extra_size)*halo_allocate_depth
-  bt_size = num_buffered*(chunks(chunk)%field%x_max + 2*allocate_extra_size)*(chunks(chunk)%field%z_max + 2*allocate_extra_size)*halo_allocate_depth
-  fb_size = num_buffered*(chunks(chunk)%field%x_max + 2*allocate_extra_size)*(chunks(chunk)%field%y_max + 2*allocate_extra_size)*halo_allocate_depth
+  lr_size = num_buffered*(chunks(chunk)%field%y_max + 2*allocate_extra_size)*(chunks(chunk)%field%z_max + 2*allocate_extra_size)*halo_exchange_depth
+  bt_size = num_buffered*(chunks(chunk)%field%x_max + 2*allocate_extra_size)*(chunks(chunk)%field%z_max + 2*allocate_extra_size)*halo_exchange_depth
+  fb_size = num_buffered*(chunks(chunk)%field%x_max + 2*allocate_extra_size)*(chunks(chunk)%field%y_max + 2*allocate_extra_size)*halo_exchange_depth
 
   ! Unallocated buffers for external boundaries caused issues on some systems so they are now
   !  all allocated
@@ -402,7 +402,8 @@ SUBROUTINE tea_exchange(fields,depth)
 
     IF(chunks(chunk)%chunk_neighbours(chunk_back).NE.external_face) THEN
       ! do back exchanges
-        CALL tea_pack_back(chunk, fields, depth, back_front_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_BACK, &
+        chunks(chunk)%back_snd_buffer, back_front_offset)
 
       !send message downwards
       CALL tea_send_recv_message_back(chunks(chunk)%back_snd_buffer,                        &
@@ -415,7 +416,8 @@ SUBROUTINE tea_exchange(fields,depth)
 
     IF(chunks(chunk)%chunk_neighbours(chunk_front).NE.external_face) THEN
       ! do front exchanges
-        CALL tea_pack_front(chunk, fields, depth, back_front_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_FRONT, &
+        chunks(chunk)%front_snd_buffer, back_front_offset)
 
       !send message upwards
       CALL tea_send_recv_message_front(chunks(chunk)%front_snd_buffer,                       &
@@ -431,16 +433,14 @@ SUBROUTINE tea_exchange(fields,depth)
 
     !unpack in front direction
     IF( chunks(chunk)%chunk_neighbours(chunk_front).NE.external_face ) THEN
-        CALL tea_unpack_front(fields, chunk, depth,                       &
-                               chunks(chunk)%front_rcv_buffer,               &
-                               back_front_offset)
+      CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_FRONT, &
+        chunks(chunk)%front_rcv_buffer, back_front_offset)
     ENDIF
 
     !unpack in back direction
     IF(chunks(chunk)%chunk_neighbours(chunk_back).NE.external_face) THEN
-        CALL tea_unpack_back(fields, chunk, depth,                   &
-                                 chunks(chunk)%back_rcv_buffer,         &
-                                 back_front_offset)
+      CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_BACK, &
+        chunks(chunk)%back_rcv_buffer, back_front_offset)
     ENDIF
 
 END SUBROUTINE tea_exchange

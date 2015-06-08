@@ -134,7 +134,7 @@ SUBROUTINE tea_leaf_kernel_solve_cg_fortran_calc_w(x_min,             &
                                                    Kz,                &
                                                    rx,                &
                                                    ry,                &
-                                                   Kz,                &
+                                                   rz,                &
                                                    pw                 )
 
   IMPLICIT NONE
@@ -198,9 +198,9 @@ SUBROUTINE tea_leaf_kernel_solve_cg_fortran_calc_ur(x_min,             &
 
   INTEGER :: preconditioner_type
   INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
-  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: u , p , r , Mi , w , z
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: u , p , r , Mi , w , z, Kx, Ky, Kz
   REAL(KIND=8), DIMENSION(x_min:x_max,y_min:y_max,z_min:z_max) :: cp, bfp
-  REAL(KIND=8) :: rx, ry
+  REAL(KIND=8) :: rx, ry, rz
 
     INTEGER(KIND=4) :: j,k,l
     REAL(kind=8) :: alpha, rrn

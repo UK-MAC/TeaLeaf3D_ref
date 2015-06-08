@@ -194,7 +194,9 @@ SUBROUTINE tea_leaf()
               chunks(c)%field%vector_Kx,                 &
               chunks(c)%field%vector_Ky,                 &
               chunks(c)%field%vector_Kz,                 &
-              rx, ry, rz, rro, coefficient, tl_preconditioner_type)
+              chunks(c)%field%tri_cp,   &
+              chunks(c)%field%tri_bfp,    &
+              rx, ry, rz, rro, tl_preconditioner_type)
         ENDIF
 
         ! and globally sum rro
@@ -310,6 +312,8 @@ SUBROUTINE tea_leaf()
                           chunks(c)%field%vector_Kx,                 &
                           chunks(c)%field%vector_Ky,                 &
                           chunks(c)%field%vector_Kz,                 &
+                          chunks(c)%field%tri_cp,   &
+                          chunks(c)%field%tri_bfp,    &
                           ch_alphas, ch_betas, max_cheby_iters,        &
                           rx, ry, rz, cheby_calc_steps, tl_preconditioner_type)
                   ENDIF
@@ -420,7 +424,7 @@ SUBROUTINE tea_leaf()
             ppcg_inner_iters = ppcg_inner_iters + tl_ppcg_inner_steps
 
             IF(use_fortran_kernels) THEN
-              CALL tea_leaf_calc_zrnorm_kernel(chunks(c)%field%x_min,        &
+              CALL tea_leaf_ppcg_calc_zrnorm_kernel(chunks(c)%field%x_min,        &
                     chunks(c)%field%x_max,                       &
                     chunks(c)%field%y_min,                       &
                     chunks(c)%field%y_max,                       &
@@ -919,6 +923,8 @@ SUBROUTINE tea_leaf_cheby_first_step(c, ch_alphas, ch_betas, fields, &
           chunks(c)%field%vector_Kx,                 &
           chunks(c)%field%vector_Ky,                 &
           chunks(c)%field%vector_Kz,                 &
+          chunks(c)%field%tri_cp,   &
+          chunks(c)%field%tri_bfp,    &
           ch_alphas, ch_betas, max_cheby_iters,        &
           rx, ry, rz, 1, tl_preconditioner_type)
   ENDIF

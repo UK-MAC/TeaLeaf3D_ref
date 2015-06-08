@@ -33,8 +33,8 @@ SUBROUTINE field_summary_kernel(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchang
   IMPLICIT NONE
 
   INTEGER      :: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: volume
-  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth) :: density,energy1,u
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: volume
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: density,energy1,u
   REAL(KIND=8) :: vol,mass,ie,temp
 
   INTEGER      :: j,k,l
@@ -54,7 +54,7 @@ SUBROUTINE field_summary_kernel(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchang
         cell_mass=cell_vol*density(j,k,l)
         vol=vol+cell_vol
         mass=mass+cell_mass
-        ie=ie+cell_mass*energy0(j,k,l)
+        ie=ie+cell_mass*energy1(j,k,l)
         temp = temp + cell_mass*u(j,k,l)
       ENDDO
     ENDDO

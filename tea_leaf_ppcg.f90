@@ -31,7 +31,7 @@ SUBROUTINE tea_leaf_kernel_ppcg_init_sd(x_min,             &
 
   INTEGER :: preconditioner_type
   INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
-  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: r, sd, kx, ky, z, mi
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: r, sd, kx, ky, z, mi, Kz
   REAL(KIND=8), DIMENSION(x_min:x_max,y_min:y_max,z_min:z_max) :: cp, bfp
   REAL(KIND=8) :: theta, theta_r, rx, ry, rz
 
@@ -82,10 +82,10 @@ SUBROUTINE tea_leaf_kernel_ppcg_inner(x_min,             &
                                       z_min,             &
                                       z_max,             &
                                       halo_exchange_depth,             &
-                                      inner_step,              &
+                                      outer_step,              &
                                       alpha,             &
                                       beta,              &
-                                      rx, ry, rz         &
+                                      rx, ry, rz,         &
                                       ppcg_cur_step, tl_ppcg_inner_steps,   &
                                       u,                 &
                                       r,                 &
@@ -102,15 +102,15 @@ SUBROUTINE tea_leaf_kernel_ppcg_inner(x_min,             &
 
   INTEGER :: preconditioner_type
   INTEGER(KIND=4):: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
-  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: u, r, Kx, Ky, sd, kz
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: u, r, Kx, Ky, sd, kz, z, Mi
   REAL(KIND=8), DIMENSION(x_min:x_max,y_min:y_max,z_min:z_max) :: cp, bfp
-  INTEGER(KIND=4) :: j,k,l, inner_step
+  INTEGER(KIND=4) :: j,k,l, outer_step
   REAL(KIND=8), DIMENSION(:) :: alpha, beta
   REAL(KIND=8) :: smvp, rx, ry, rz
 
   INTEGER(KIND=4) :: bounds_extra, ppcg_cur_step, tl_ppcg_inner_steps, inner_step
 
-  inner_step = inner_step
+  inner_step = outer_step
 
   DO bounds_extra = halo_exchange_depth-1, 0, -1
 !$OMP PARALLEL PRIVATE(smvp)
