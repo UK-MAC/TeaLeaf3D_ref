@@ -185,9 +185,13 @@ Default error to switch from CG to Chebyshev when using Chebyshev solver with th
 
 After the solver reaches convergence, calculate ||b-Ax|| to make sure the solver has actually converged. The default for this option is off.
 
-`tl_preconditioner_on`
+`tl_preconditioner_type`
 
-This keyword invokes the pre-conditioner. The only pre-conditioner available is a diagonal scaling. This is a simple precoditioner and may not accelerate the time to solution or reduce the iteration count. By default, no pre-conditioner is used.
+This keyword invokes the pre-conditioner. Options are:
+
+* `none` - No preconditioner.
+* `jac_diag` - Diagonal Jacobi preconditioner. Typically reduces condition number by around 5% but may not reduce time to solution
+* `jac_block` - Block Jacobi preconditioner (with a currently hardcoded block size of 4). Typically reduces the condition number by around 50% but may not reduce time to solution
 
 `tl_use_jacobi`
 
@@ -207,7 +211,12 @@ This keyword selects the Chebyshev method to solve the linear system.
 
 `profiler_on`
 
+
 This option turns the code's coarse grained internal profiler end. Timing information is reported at the end of the simulation in the tea.out file. The default is no profiling.
+
+`verbose_on`
+
+The option prints out extra information such as residual per iteration of a solve.
 
 `tl_max_iters <I>`
 

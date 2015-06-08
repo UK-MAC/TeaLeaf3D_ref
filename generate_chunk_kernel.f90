@@ -2,17 +2,17 @@
 !
 ! This file is part of TeaLeaf.
 !
-! TeaLeaf is free software: you can redistribute it and/or modify it under 
-! the terms of the GNU General Public License as published by the 
-! Free Software Foundation, either version 3 of the License, or (at your option) 
+! TeaLeaf is free software: you can redistribute it and/or modify it under
+! the terms of the GNU General Public License as published by the
+! Free Software Foundation, either version 3 of the License, or (at your option)
 ! any later version.
 !
-! TeaLeaf is distributed in the hope that it will be useful, but 
-! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more 
+! TeaLeaf is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
 ! details.
 !
-! You should have received a copy of the GNU General Public License along with 
+! You should have received a copy of the GNU General Public License along with
 ! TeaLeaf. If not, see http://www.gnu.org/licenses/.
 
 !>  @brief Fortran mesh chunk generator
@@ -61,7 +61,7 @@ SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max,z_min,z_max, &
   REAL(KIND=8), DIMENSION(x_min-2:x_max+2) :: cellx
   REAL(KIND=8), DIMENSION(y_min-2:y_max+2) :: celly
   REAL(KIND=8), DIMENSION(z_min-2:z_max+2) :: cellz
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: density,energy0,u0
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: density,energy0,u0
   INTEGER      :: number_of_states
   REAL(KIND=8), DIMENSION(number_of_states) :: state_density
   REAL(KIND=8), DIMENSION(number_of_states) :: state_energy
@@ -84,20 +84,20 @@ SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max,z_min,z_max, &
 
   ! State 1 is always the background state
 
-!$OMP PARALLEL SHARED(x_cent,y_cent)
+!$OMP PARALLEL PRIVATE(x_cent,y_cent, z_cent, state,radius,jt,kt,lt)
 !$OMP DO
-  DO l=z_min-2,z_max+2
-    DO k=y_min-2,y_max+2
-      DO j=x_min-2,x_max+2
+  DO l=z_min,z_max
+    DO k=y_min,y_max
+      DO j=x_min,x_max
         energy0(j,k,l)=state_energy(1)
       ENDDO
     ENDDO
   ENDDO
 !$OMP END DO
 !$OMP DO
-  DO l=z_min-2,z_max+2
-    DO k=y_min-2,y_max+2
-      DO j=x_min-2,x_max+2
+  DO l=z_min,z_max
+    DO k=y_min,y_max
+      DO j=x_min,x_max
         density(j,k,l)=state_density(1)
       ENDDO
     ENDDO
@@ -110,10 +110,10 @@ SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max,z_min,z_max, &
     y_cent=state_ymin(state)
     z_cent=state_zmin(state)
 
-!$OMP DO PRIVATE(radius,jt,kt,lt)
-    DO l=z_min-2,z_max+2
-      DO k=y_min-2,y_max+2
-        DO j=x_min-2,x_max+2
+!$OMP DO
+    DO l=z_min,z_max
+      DO k=y_min,y_max
+        DO j=x_min,x_max
           IF(state_geometry(state).EQ.g_rect ) THEN
             IF(vertexx(j+1).GE.state_xmin(state).AND.vertexx(j).LT.state_xmax(state)) THEN
               IF(vertexy(k+1).GE.state_ymin(state).AND.vertexy(k).LT.state_ymax(state)) THEN
@@ -142,10 +142,10 @@ SUBROUTINE generate_chunk_kernel(x_min,x_max,y_min,y_max,z_min,z_max, &
 
   ENDDO
 
-!$OMP DO 
-DO l=z_min-1,z_max+1
-  DO k=y_min-1, y_max+1
-    DO j=x_min-1, x_max+1
+!$OMP DO
+DO l=z_min,z_max
+  DO k=y_min, y_max
+    DO j=x_min, x_max
       u0(j,k,l) =  energy0(j,k,l) * density(j,k,l)
     ENDDO
   ENDDO

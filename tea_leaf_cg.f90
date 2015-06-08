@@ -2,17 +2,17 @@
 !
 ! This file is part of TeaLeaf.
 !
-! TeaLeaf is free software: you can redistribute it and/or modify it under 
-! the terms of the GNU General Public License as published by the 
-! Free Software Foundation, either version 3 of the License, or (at your option) 
+! TeaLeaf is free software: you can redistribute it and/or modify it under
+! the terms of the GNU General Public License as published by the
+! Free Software Foundation, either version 3 of the License, or (at your option)
 ! any later version.
 !
-! TeaLeaf is distributed in the hope that it will be useful, but 
-! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more 
+! TeaLeaf is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
 ! details.
 !
-! You should have received a copy of the GNU General Public License along with 
+! You should have received a copy of the GNU General Public License along with
 ! TeaLeaf. If not, see http://www.gnu.org/licenses/.
 
 !>  @brief Fortran heat conduction kernel
@@ -30,7 +30,7 @@ SUBROUTINE tea_leaf_kernel_init_cg_fortran(x_min,             &
                            y_min,             &
                            y_max,             &
                            z_min,             &
-                           z_max,             &
+                           z_max, halo_exchange_depth,                              &
                            density,           &
                            energy,            &
                            u,                 &
@@ -42,53 +42,42 @@ SUBROUTINE tea_leaf_kernel_init_cg_fortran(x_min,             &
                            Kx,          &
                            Ky,          &
                            Kz,          &
+                           cp,                     &
+                           bfp,                    &
                            rx,          &
                            ry,          &
                            rz,          &
                            rro,         &
-                           coef,        &
-                           preconditioner_on)
+                           preconditioner_type)
 
   IMPLICIT NONE
 
-  LOGICAL :: preconditioner_on
-  INTEGER(KIND=4):: x_min,x_max,y_min,y_max, z_min, z_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: density
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: energy
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: p
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: r
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: Mi
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: w
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: z
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: Kx, Ky, Kz
+  INTEGER :: preconditioner_type
+  INTEGER(KIND=4):: x_min,x_max,y_min,y_max, z_min, z_max,halo_exchange_depth
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: u, r, w, Kx, Ky, z, Mi, density, energy, p
+  REAL(KIND=8), DIMENSION(x_min:x_max,y_min:y_max) :: cp, bfp
 
-  INTEGER(KIND=4) :: coef
-  INTEGER(KIND=4) :: j,k,n,l
+  INTEGER(KIND=4) :: j,k,l
 
   REAL(kind=8) :: rro
   REAL(KIND=8) ::  rx, ry, rz
 
-   INTEGER         ::            CONDUCTIVITY        = 1 &
-                                ,RECIP_CONDUCTIVITY  = 2
-
   rro = 0.0_8
-  p = 0.0_8
-  r = 0.0_8
 
 !$OMP PARALLEL
-!$OMP DO 
-  DO l=z_min-2,z_max+2
-    DO k=y_min-2, y_max+2
-      DO j=x_min-2, x_max+2
-        u(j, k, l) = energy(j, k, l)*density(j, k, l)
+!$OMP DO
+  DO l=z_min,z_max
+    DO k=y_min, y_max
+      DO j=x_min, x_max
+        p(j, k) = 0.0_8
+        z(j, k) = 0.0_8
       ENDDO
     ENDDO
   ENDDO
 !$OMP END DO
 
   IF(coef .EQ. RECIP_CONDUCTIVITY) THEN
-!$OMP DO 
+!$OMP DO
     ! use w as temp val
   DO l=z_min-1,z_max+1
     DO k=y_min-1,y_max+1
@@ -139,7 +128,7 @@ SUBROUTINE tea_leaf_kernel_init_cg_fortran(x_min,             &
     ENDDO
   ENDDO
 
-  IF (preconditioner_on) then
+  IF (preconditioner_type) then
 !$OMP DO REDUCTION(+:rro)
   DO l=z_min,z_max
     DO k=y_min,y_max
@@ -195,9 +184,7 @@ SUBROUTINE tea_leaf_kernel_solve_cg_fortran_calc_w(x_min,             &
   IMPLICIT NONE
 
   INTEGER(KIND=4):: x_min,x_max,y_min,y_max, z_min, z_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: p
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: w
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: Kx, Ky, Kz
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: Kx, Ky, Kz, p, w
 
     REAL(KIND=8) ::  rx, ry, rz
 
@@ -242,26 +229,21 @@ SUBROUTINE tea_leaf_kernel_solve_cg_fortran_calc_ur(x_min,             &
                            z,     &
                            alpha, &
                            rrn, &
-                           preconditioner_on)
+                           preconditioner_type)
 
   IMPLICIT NONE
 
-  LOGICAL :: preconditioner_on
+  LOGICAL :: preconditioner_type
   INTEGER(KIND=4):: x_min,x_max,y_min,y_max, z_min, z_max
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: p
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: r
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: Mi
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: w
-  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: z
+  REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: u , p , r , Mi , w , z
+  REAL(KIND=8), DIMENSION(x_min:x_max,y_min:y_max,z_min:z_max) :: cp, bfp
+  REAL(KIND=8) :: rx, ry
 
-    INTEGER(KIND=4) :: j,k,n,l
+    INTEGER(KIND=4) :: j,k,l
     REAL(kind=8) :: alpha, rrn
 
-    rrn = 0.0_08
-
 !$OMP PARALLEL
-  IF (preconditioner_on) THEN
+  IF (preconditioner_type) THEN
 !$OMP DO REDUCTION(+:rrn)
   DO l=z_min,z_max
     DO k=y_min,y_max
@@ -301,11 +283,11 @@ SUBROUTINE tea_leaf_kernel_solve_cg_fortran_calc_p(x_min,             &
                            r,            &
                            z,     &
                            beta, &
-                           preconditioner_on)
+                           preconditioner_type)
 
   IMPLICIT NONE
 
-  LOGICAL :: preconditioner_on
+  LOGICAL :: preconditioner_type
   INTEGER(KIND=4):: x_min,x_max,y_min,y_max, z_min, z_max
   REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2,z_min-2:z_max+2) :: p, r, z
 
@@ -315,7 +297,7 @@ SUBROUTINE tea_leaf_kernel_solve_cg_fortran_calc_p(x_min,             &
     REAL(kind=8) :: beta
 
 !$OMP PARALLEL
-  IF (preconditioner_on) THEN
+  IF (preconditioner_type) THEN
 !$OMP DO
   DO l=z_min,z_max
     DO k=y_min,y_max

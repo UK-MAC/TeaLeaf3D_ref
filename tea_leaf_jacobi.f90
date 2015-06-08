@@ -2,28 +2,28 @@
 !
 ! This file is part of TeaLeaf.
 !
-! TeaLeaf is free software: you can redistribute it and/or modify it under 
-! the terms of the GNU General Public License as published by the 
-! Free Software Foundation, either version 3 of the License, or (at your option) 
+! TeaLeaf is free software: you can redistribute it and/or modify it under
+! the terms of the GNU General Public License as published by the
+! Free Software Foundation, either version 3 of the License, or (at your option)
 ! any later version.
 !
-! TeaLeaf is distributed in the hope that it will be useful, but 
-! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more 
+! TeaLeaf is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
 ! details.
 !
-! You should have received a copy of the GNU General Public License along with 
+! You should have received a copy of the GNU General Public License along with
 ! TeaLeaf. If not, see http://www.gnu.org/licenses/.
 
 !>  @brief Fortran heat conduction kernel
 !>  @author David Beckingsale, Wayne Gaudin
 !>  @details Implicitly calculates the change in temperature using a Jacobi iteration
 
-MODULE tea_leaf_kernel_module
+MODULE tea_leaf_kernel_jacobi_module
 
 CONTAINS
 
-SUBROUTINE tea_leaf_kernel_init(x_min,             &
+SUBROUTINE tea_leaf_kernel_jacobi_solve(x_min,       &
                            x_max,             &
                            y_min,             &
                            y_max,             &
@@ -239,7 +239,7 @@ SUBROUTINE tea_leaf_calc_residual(x_min,       &
 !$OMP END DO
 !$OMP END PARALLEL
 
-END SUBROUTINE tea_leaf_calc_residual
+END SUBROUTINE tea_leaf_kernel_jacobi_solve
 
-END MODULE tea_leaf_kernel_module
+END MODULE tea_leaf_kernel_jacobi_module
 
