@@ -64,6 +64,7 @@ CONTAINS
 
   INTEGER :: fields(NUM_FIELDS),depth
 
+  IF (reflective_boundary .EQV. .TRUE.) THEN
 !$OMP PARALLEL
 
   ! Update values in external halo cells based on depth and fields requested
@@ -72,38 +73,37 @@ CONTAINS
   ! loop along the mesh edge.
 
   IF(fields(FIELD_DENSITY).EQ.1) THEN
-    CALL update_halo_cell(x_min, x_max, y_min, y_max,z_min, z_max,   &
+    CALL update_halo_cell(x_min, x_max, y_min, y_max, z_min, z_max,   &
       halo_exchange_depth, chunk_neighbours, density, depth)
   ENDIF
 
   IF(fields(FIELD_ENERGY0).EQ.1) THEN
-    CALL update_halo_cell(x_min, x_max, y_min, y_max,z_min, z_max,   &
+    CALL update_halo_cell(x_min, x_max, y_min, y_max, z_min, z_max,   &
       halo_exchange_depth, chunk_neighbours, energy0, depth)
   ENDIF
 
   IF(fields(FIELD_ENERGY1).EQ.1) THEN
-    CALL update_halo_cell(x_min, x_max, y_min, y_max,z_min, z_max,   &
+    CALL update_halo_cell(x_min, x_max, y_min, y_max, z_min, z_max,   &
       halo_exchange_depth, chunk_neighbours, energy1, depth)
   ENDIF
 
-  IF (reflective_boundary .EQV. .TRUE.) THEN
-    IF(fields(FIELD_U).EQ.1) THEN
-      CALL update_halo_cell(x_min, x_max, y_min, y_max,z_min, z_max,   &
-        halo_exchange_depth, chunk_neighbours, u, depth)
-    ENDIF
+  IF(fields(FIELD_U).EQ.1) THEN
+    CALL update_halo_cell(x_min, x_max, y_min, y_max, z_min, z_max,   &
+      halo_exchange_depth, chunk_neighbours, u, depth)
+  ENDIF
 
-    IF(fields(FIELD_p).EQ.1) THEN
-      CALL update_halo_cell(x_min, x_max, y_min, y_max,z_min, z_max,   &
-        halo_exchange_depth, chunk_neighbours, p, depth)
-    ENDIF
+  IF(fields(FIELD_p).EQ.1) THEN
+    CALL update_halo_cell(x_min, x_max, y_min, y_max, z_min, z_max,   &
+      halo_exchange_depth, chunk_neighbours, p, depth)
+  ENDIF
 
-    IF(fields(FIELD_sd).EQ.1) THEN
-      CALL update_halo_cell(x_min, x_max, y_min, y_max,z_min, z_max,   &
-        halo_exchange_depth, chunk_neighbours, sd, depth)
-    ENDIF
+  IF(fields(FIELD_sd).EQ.1) THEN
+    CALL update_halo_cell(x_min, x_max, y_min, y_max, z_min, z_max,   &
+      halo_exchange_depth, chunk_neighbours, sd, depth)
   ENDIF
 
 !$OMP END PARALLEL
+  ENDIF
 
 END SUBROUTINE update_halo_kernel
 
@@ -122,7 +122,7 @@ SUBROUTINE update_halo_cell(x_min,x_max,y_min,y_max,z_min, z_max, halo_exchange_
   INTEGER :: j,k,l
 
   IF(chunk_neighbours(CHUNK_LEFT).EQ.EXTERNAL_FACE) THEN
-!$OMP DO COLLAPSE(2)
+!$OMP DO
     DO l=z_min-depth,z_max+depth
       DO k=y_min-depth,y_max+depth
         DO j=1,depth
@@ -133,7 +133,7 @@ SUBROUTINE update_halo_cell(x_min,x_max,y_min,y_max,z_min, z_max, halo_exchange_
 !$OMP END DO NOWAIT
   ENDIF
   IF(chunk_neighbours(CHUNK_RIGHT).EQ.EXTERNAL_FACE) THEN
-!$OMP DO COLLAPSE(2)
+!$OMP DO
     DO l=z_min-depth,z_max+depth
       DO k=y_min-depth,y_max+depth
         DO j=1,depth
@@ -150,7 +150,7 @@ SUBROUTINE update_halo_cell(x_min,x_max,y_min,y_max,z_min, z_max, halo_exchange_
   ENDIF
 
   IF(chunk_neighbours(CHUNK_BOTTOM).EQ.EXTERNAL_FACE) THEN
-!$OMP DO COLLAPSE(2)
+!$OMP DO
     DO l=z_min-depth,z_max+depth
       DO k=1,depth
         DO j=x_min-depth,x_max+depth
@@ -161,7 +161,7 @@ SUBROUTINE update_halo_cell(x_min,x_max,y_min,y_max,z_min, z_max, halo_exchange_
 !$OMP END DO NOWAIT
   ENDIF
   IF(chunk_neighbours(CHUNK_TOP).EQ.EXTERNAL_FACE) THEN
-!$OMP DO COLLAPSE(2)
+!$OMP DO
     DO l=z_min-depth,z_max+depth
       DO k=1,depth
         DO j=x_min-depth,x_max+depth
@@ -178,26 +178,26 @@ SUBROUTINE update_halo_cell(x_min,x_max,y_min,y_max,z_min, z_max, halo_exchange_
   ENDIF
 
   IF(chunk_neighbours(CHUNK_BACK).EQ.EXTERNAL_FACE) THEN
-!$OMP DO COLLAPSE(2)
     DO l=1,depth
+!$OMP DO
       DO k=y_min-depth,y_max+depth
         DO j=x_min-depth,x_max+depth
           mesh(j,k,1-l)=mesh(j,k,0+l)
         ENDDO
       ENDDO
-    ENDDO
 !$OMP END DO NOWAIT
+    ENDDO
   ENDIF
   IF(chunk_neighbours(CHUNK_FRONT).EQ.EXTERNAL_FACE) THEN
-!$OMP DO COLLAPSE(2)
     DO l=1,depth
+!$OMP DO
       DO k=y_min-depth,y_max+depth
         DO j=x_min-depth,x_max+depth
           mesh(j,k,z_max+l)=mesh(j,k,z_max+1-l)
         ENDDO
       ENDDO
-    ENDDO
 !$OMP END DO NOWAIT
+    ENDDO
   ENDIF
 
 END SUBROUTINE update_halo_cell

@@ -158,7 +158,7 @@ SUBROUTINE tea_leaf()
             chunks(c)%field%z_max,                       &
             halo_exchange_depth,                       &
             chunks(c)%field%vector_r,                 &
-            error)
+            initial_residual)
       ENDIF
 
       IF (profiler_on) dot_product_time=timer()

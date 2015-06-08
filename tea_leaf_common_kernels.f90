@@ -69,97 +69,119 @@ SUBROUTINE tea_leaf_kernel_init_common(x_min,  &
 
 !$OMP PARALLEL
 !$OMP DO
+  DO l=z_min,z_max
   DO k=y_min, y_max
     DO j=x_min, x_max
       u(j, k, l) = energy(j, k, l)*density(j, k, l)
       u0(j, k, l) = energy(j, k, l)*density(j, k, l)
     ENDDO
   ENDDO
+  ENDDO
 !$OMP END DO
 
   IF(coef .EQ. RECIP_CONDUCTIVITY) THEN
 !$OMP DO
     ! use w as temp val
+  DO l=z_min-halo_exchange_depth,z_max+halo_exchange_depth
     DO k=y_min-halo_exchange_depth,y_max+halo_exchange_depth
       DO j=x_min-halo_exchange_depth,x_max+halo_exchange_depth
          w(j, k, l)=1.0_8/density(j, k, l)
       ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
   ELSE IF(coef .EQ. CONDUCTIVITY) THEN
 !$OMP DO
+  DO l=z_min-halo_exchange_depth,z_max+halo_exchange_depth
     DO k=y_min-halo_exchange_depth,y_max+halo_exchange_depth
       DO j=x_min-halo_exchange_depth,x_max+halo_exchange_depth
          w(j, k, l)=density(j, k, l)
       ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
   ENDIF
 
+  print *, sum(w)
+
 !$OMP DO
+ DO l=z_min-halo_exchange_depth + 1,z_max+halo_exchange_depth
    DO k=y_min-halo_exchange_depth + 1,y_max+halo_exchange_depth
      DO j=x_min-halo_exchange_depth + 1,x_max+halo_exchange_depth
-          Kx(j, k, l)=(w(j-1,k  ,l  ) + w(j, k, l))/(2.0_8*w(j-1,k  ,l  )*w(j, k, l))
-          Ky(j, k, l)=(w(j  ,k-1,l  ) + w(j, k, l))/(2.0_8*w(j  ,k-1,l  )*w(j, k, l))
-          Kz(j, k, l)=(w(j  ,k  ,l-1) + w(j, k, l))/(2.0_8*w(j  ,k  ,l-1)*w(j, k, l))
+       Kx(j, k, l)=(w(j-1,k  ,l  ) + w(j, k, l))/(2.0_8*w(j-1,k  ,l  )*w(j, k, l))
+       Ky(j, k, l)=(w(j  ,k-1,l  ) + w(j, k, l))/(2.0_8*w(j  ,k-1,l  )*w(j, k, l))
+       Kz(j, k, l)=(w(j  ,k  ,l-1) + w(j, k, l))/(2.0_8*w(j  ,k  ,l-1)*w(j, k, l))
      ENDDO
    ENDDO
+ ENDDO
 !$OMP END DO
 
 ! Whether to apply reflective boundary conditions to all external faces
   IF (reflective_boundary .eqv. .FALSE.) THEN
     IF(chunk_neighbours(CHUNK_LEFT).EQ.EXTERNAL_FACE) THEN
 !$OMP DO
+  DO l=z_min-halo_exchange_depth,z_max+halo_exchange_depth
       DO k=y_min-halo_exchange_depth,y_max+halo_exchange_depth
         DO j=x_min-halo_exchange_depth,x_min
           Kx(j, k, l)=0.0_8
         ENDDO
       ENDDO
+  ENDDO
 !$OMP END DO
     ENDIF
     IF(chunk_neighbours(CHUNK_RIGHT).EQ.EXTERNAL_FACE) THEN
 !$OMP DO
+  DO l=z_min-halo_exchange_depth,z_max+halo_exchange_depth
       DO k=y_min-halo_exchange_depth,y_max+halo_exchange_depth
         DO j=x_max,x_max+halo_exchange_depth
           Kx(j, k, l)=0.0_8
         ENDDO
       ENDDO
+  ENDDO
 !$OMP END DO
     ENDIF
     IF(chunk_neighbours(CHUNK_BOTTOM).EQ.EXTERNAL_FACE) THEN
 !$OMP DO
+  DO l=z_min-halo_exchange_depth,z_max+halo_exchange_depth
       DO k=y_min-halo_exchange_depth,y_min
         DO j=x_min-halo_exchange_depth,x_max+halo_exchange_depth
           Ky(j, k, l)=0.0_8
         ENDDO
       ENDDO
+  ENDDO
 !$OMP END DO
     ENDIF
     IF(chunk_neighbours(CHUNK_TOP).EQ.EXTERNAL_FACE) THEN
 !$OMP DO
+  DO l=z_min-halo_exchange_depth,z_max+halo_exchange_depth
       DO k=y_max,y_max+halo_exchange_depth
         DO j=x_min-halo_exchange_depth,x_max+halo_exchange_depth
           Ky(j, k, l)=0.0_8
         ENDDO
       ENDDO
+  ENDDO
 !$OMP END DO
     ENDIF
     IF(chunk_neighbours(CHUNK_BACK).EQ.EXTERNAL_FACE) THEN
 !$OMP DO
-      DO k=y_max,y_max+halo_exchange_depth
+  DO l=z_min-halo_exchange_depth,z_min
+      DO k=y_min-halo_exchange_depth,y_max+halo_exchange_depth
         DO j=x_min-halo_exchange_depth,x_max+halo_exchange_depth
-          Ky(j, k, l)=0.0_8
+          Kz(j, k, l)=0.0_8
         ENDDO
       ENDDO
+  ENDDO
 !$OMP END DO
     ENDIF
     IF(chunk_neighbours(CHUNK_FRONT).EQ.EXTERNAL_FACE) THEN
 !$OMP DO
-      DO k=y_max,y_max+halo_exchange_depth
+  DO l=z_max,z_max+halo_exchange_depth
+      DO k=y_min-halo_exchange_depth,y_max+halo_exchange_depth
         DO j=x_min-halo_exchange_depth,x_max+halo_exchange_depth
-          Ky(j, k, l)=0.0_8
+          Kz(j, k, l)=0.0_8
         ENDDO
       ENDDO
+  ENDDO
 !$OMP END DO
     ENDIF
   ENDIF
@@ -173,6 +195,7 @@ SUBROUTINE tea_leaf_kernel_init_common(x_min,  &
   ENDIF
 
 !$OMP DO
+  DO l=z_min,z_max
     DO k=y_min,y_max
         DO j=x_min,x_max
             w(j, k, l) = (1.0_8                                      &
@@ -188,6 +211,7 @@ SUBROUTINE tea_leaf_kernel_init_common(x_min,  &
                               ! Only works one timestep is run
         ENDDO
     ENDDO
+ENDDO
 !$OMP END DO
 !$OMP END PARALLEL
 
@@ -214,10 +238,12 @@ SUBROUTINE tea_leaf_kernel_finalise(x_min,    &
 
 !$OMP PARALLEL
 !$OMP DO
+  DO l=z_min,z_max
   DO k=y_min, y_max
     DO j=x_min, x_max
       energy(j, k, l) = u(j, k, l) / density(j, k, l)
     ENDDO
+  ENDDO
   ENDDO
 !$OMP END DO
 !$OMP END PARALLEL
@@ -247,6 +273,7 @@ SUBROUTINE tea_leaf_calc_residual(x_min,       &
 
 !$OMP PARALLEL PRIVATE(smvp)
 !$OMP DO
+  DO l=z_min,z_max
     DO k=y_min, y_max
       DO j=x_min, x_max
         smvp = (1.0_8                                      &
@@ -259,6 +286,7 @@ SUBROUTINE tea_leaf_calc_residual(x_min,       &
         r(j, k, l) = u0(j, k, l) - smvp
       ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
 !$OMP END PARALLEL
 
@@ -285,11 +313,13 @@ SUBROUTINE tea_leaf_calc_2norm_kernel(x_min, &
 
 !$OMP PARALLEL
 !$OMP DO REDUCTION(+:norm)
+  DO l=z_min,z_max
     DO k=y_min,y_max
         DO j=x_min,x_max
             norm = norm + arr(j, k, l)*arr(j, k, l)
         ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
 !$OMP END PARALLEL
 
@@ -317,11 +347,13 @@ SUBROUTINE tea_diag_init(x_min,             &
   REAL(KIND=8) :: rx, ry, rz
 
 !$OMP DO
+  DO l=z_min,z_max
     DO k=y_min,y_max
       DO j=x_min,x_max
         Mi(j, k, l) = 1.0_8/COEF_B
       ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
 
 END SUBROUTINE
@@ -344,11 +376,13 @@ SUBROUTINE tea_diag_solve(x_min,             &
   REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: r, z, Mi
 
 !$OMP DO
+  DO l=z_min,z_max
     DO k=y_min,y_max
       DO j=x_min,x_max
         z(j, k, l) = Mi(j, k, l)*r(j, k, l)
       ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO NOWAIT
 
 END SUBROUTINE
@@ -373,6 +407,7 @@ SUBROUTINE tea_block_init(x_min,             &
   REAL(KIND=8) :: rx, ry, rz
 
 !$OMP DO
+  DO l=z_min,z_max
     DO ko=y_min,y_max,jac_block_size
 
       bottom = ko
@@ -391,6 +426,7 @@ SUBROUTINE tea_block_init(x_min,             &
         ENDDO
       ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
 
 END SUBROUTINE
@@ -420,6 +456,7 @@ SUBROUTINE tea_block_solve(x_min,             &
   k_extra = y_max - MOD(y_max, kstep)
 
 !$OMP DO
+  DO l=z_min,z_max
     DO ko=y_min, k_extra, kstep
       upper_k = ko+kstep - jac_block_size
 
@@ -451,9 +488,7 @@ SUBROUTINE tea_block_solve(x_min,             &
         ENDDO
       ENDDO
     ENDDO
-!$OMP END DO NOWAIT
 
-!$OMP DO
     DO ki=k_extra+1, y_max, jac_block_size
       bottom = MIN(ki, y_max)
       top = MIN(ki+jac_block_size-1, y_max)
@@ -481,6 +516,7 @@ SUBROUTINE tea_block_solve(x_min,             &
         ENDDO
       ENDDO
     ENDDO
+  ENDDO
 !$OMP END DO
 
 END SUBROUTINE
