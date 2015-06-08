@@ -55,32 +55,39 @@ SUBROUTINE build_field(chunk,x_cells,y_cells,z_cells)
 
 
    ALLOCATE(chunks(chunk)%field%vector_p(chunks(chunk)%field%x_min-halo_exchange_depth:chunks(chunk)%field%x_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
+                                         chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
+                                         chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
    ALLOCATE(chunks(chunk)%field%vector_r(chunks(chunk)%field%x_min-halo_exchange_depth:chunks(chunk)%field%x_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
+                                         chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
+                                         chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
    ALLOCATE(chunks(chunk)%field%vector_Mi(chunks(chunk)%field%x_min-halo_exchange_depth:chunks(chunk)%field%x_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
+                                          chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
+                                          chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
    ALLOCATE(chunks(chunk)%field%vector_w(chunks(chunk)%field%x_min-halo_exchange_depth:chunks(chunk)%field%x_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
+                                         chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
+                                         chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
    ALLOCATE(chunks(chunk)%field%vector_z(chunks(chunk)%field%x_min-halo_exchange_depth:chunks(chunk)%field%x_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
+                                         chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
+                                         chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
    ALLOCATE(chunks(chunk)%field%vector_Kx(chunks(chunk)%field%x_min-halo_exchange_depth:chunks(chunk)%field%x_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
+                                          chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
+                                          chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
    ALLOCATE(chunks(chunk)%field%vector_Ky(chunks(chunk)%field%x_min-halo_exchange_depth:chunks(chunk)%field%x_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
+                                          chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
+                                          chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
    ALLOCATE(chunks(chunk)%field%vector_Kz(chunks(chunk)%field%x_min-halo_exchange_depth:chunks(chunk)%field%x_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
+                                          chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
+                                          chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
    ALLOCATE(chunks(chunk)%field%vector_sd(chunks(chunk)%field%x_min-halo_exchange_depth:chunks(chunk)%field%x_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
-                                            chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
+                                          chunks(chunk)%field%y_min-halo_exchange_depth:chunks(chunk)%field%y_max+halo_exchange_depth, &
+                                          chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
+
+   ALLOCATE(chunks(chunk)%field%tri_bfp(chunks(chunk)%field%x_min:chunks(chunk)%field%x_max, &
+                                            chunks(chunk)%field%y_min:chunks(chunk)%field%y_max, &
+                                            chunks(chunk)%field%z_min:chunks(chunk)%field%z_max))
+   ALLOCATE(chunks(chunk)%field%tri_cp(chunks(chunk)%field%x_min:chunks(chunk)%field%x_max, &
+                                            chunks(chunk)%field%y_min:chunks(chunk)%field%y_max, &
+                                            chunks(chunk)%field%z_min:chunks(chunk)%field%z_max))
 
    ALLOCATE(chunks(chunk)%field%cellx   (chunks(chunk)%field%x_min-2:chunks(chunk)%field%x_max+2))
    ALLOCATE(chunks(chunk)%field%celly   (chunks(chunk)%field%y_min-2:chunks(chunk)%field%y_max+2))
