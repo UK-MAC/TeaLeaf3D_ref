@@ -83,11 +83,11 @@ SUBROUTINE build_field(chunk,x_cells,y_cells,z_cells)
                                           chunks(chunk)%field%z_min-halo_exchange_depth:chunks(chunk)%field%z_max+halo_exchange_depth))
 
    ALLOCATE(chunks(chunk)%field%tri_bfp(chunks(chunk)%field%x_min:chunks(chunk)%field%x_max, &
-                                            chunks(chunk)%field%y_min:chunks(chunk)%field%y_max, &
-                                            chunks(chunk)%field%z_min:chunks(chunk)%field%z_max))
+                                        chunks(chunk)%field%y_min:chunks(chunk)%field%y_max, &
+                                        chunks(chunk)%field%z_min:chunks(chunk)%field%z_max))
    ALLOCATE(chunks(chunk)%field%tri_cp(chunks(chunk)%field%x_min:chunks(chunk)%field%x_max, &
-                                            chunks(chunk)%field%y_min:chunks(chunk)%field%y_max, &
-                                            chunks(chunk)%field%z_min:chunks(chunk)%field%z_max))
+                                       chunks(chunk)%field%y_min:chunks(chunk)%field%y_max, &
+                                       chunks(chunk)%field%z_min:chunks(chunk)%field%z_max))
 
    ALLOCATE(chunks(chunk)%field%cellx   (chunks(chunk)%field%x_min-2:chunks(chunk)%field%x_max+2))
    ALLOCATE(chunks(chunk)%field%celly   (chunks(chunk)%field%y_min-2:chunks(chunk)%field%y_max+2))
@@ -142,7 +142,7 @@ SUBROUTINE build_field(chunk,x_cells,y_cells,z_cells)
      ENDDO
    ENDDO
    ENDDO
-!$OMP ENDDO NOWAIT
+!$OMP ENDDO
 !$OMP DO
    DO l=chunks(chunk)%field%z_min,chunks(chunk)%field%z_max
    DO k=chunks(chunk)%field%y_min,chunks(chunk)%field%y_max
@@ -152,7 +152,7 @@ SUBROUTINE build_field(chunk,x_cells,y_cells,z_cells)
      ENDDO
    ENDDO
    ENDDO
-!$OMP ENDDO NOWAIT
+!$OMP ENDDO
 !$OMP DO
    DO l=chunks(chunk)%field%z_min-2,chunks(chunk)%field%z_max+2
    DO k=chunks(chunk)%field%y_min-2,chunks(chunk)%field%y_max+2
@@ -161,7 +161,7 @@ SUBROUTINE build_field(chunk,x_cells,y_cells,z_cells)
      ENDDO
    ENDDO
    ENDDO
-!$OMP ENDDO NOWAIT
+!$OMP ENDDO
 !$OMP DO
    DO l=chunks(chunk)%field%z_min-2,chunks(chunk)%field%z_max+2
     DO k=chunks(chunk)%field%y_min-2,chunks(chunk)%field%y_max+2
@@ -170,7 +170,7 @@ SUBROUTINE build_field(chunk,x_cells,y_cells,z_cells)
         ENDDO
     ENDDO
    ENDDO
-!$OMP END DO NOWAIT
+!$OMP END DO
 !$OMP DO
    DO l=chunks(chunk)%field%z_min-2,chunks(chunk)%field%z_max+2
     DO k=chunks(chunk)%field%y_min-2,chunks(chunk)%field%y_max+3
@@ -179,7 +179,7 @@ SUBROUTINE build_field(chunk,x_cells,y_cells,z_cells)
         ENDDO
     ENDDO
    ENDDO
-!$OMP END DO NOWAIT
+!$OMP END DO
 !$OMP DO
    DO l=chunks(chunk)%field%z_min-2,chunks(chunk)%field%z_max+3
     DO k=chunks(chunk)%field%y_min-2,chunks(chunk)%field%y_max+2

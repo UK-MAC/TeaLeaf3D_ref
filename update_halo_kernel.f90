@@ -60,7 +60,7 @@ CONTAINS
   INTEGER :: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   LOGICAL :: reflective_boundary
   INTEGER, DIMENSION(6) :: chunk_neighbours
-  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: density,energy0,energy1, u, sd, p
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: density,energy0,energy1, u, sd, p
 
   INTEGER :: fields(NUM_FIELDS),depth
 
@@ -115,7 +115,7 @@ SUBROUTINE update_halo_cell(x_min,x_max,y_min,y_max,z_min, z_max, halo_exchange_
 
   INTEGER :: x_min,x_max,y_min,y_max,z_min, z_max, halo_exchange_depth
   INTEGER, DIMENSION(6) :: chunk_neighbours
-  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: mesh
+  REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: mesh
 
   INTEGER :: depth
 

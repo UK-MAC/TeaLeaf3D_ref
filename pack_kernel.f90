@@ -33,7 +33,7 @@ SUBROUTINE tea_pack_message_left(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchan
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: left_snd_buffer(:)
 
   ! Pack
@@ -64,7 +64,7 @@ SUBROUTINE tea_unpack_message_left(x_min,x_max,y_min,y_max,z_min,z_max,halo_exch
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: left_rcv_buffer(:)
 
   ! Unpack
@@ -92,7 +92,7 @@ SUBROUTINE tea_pack_message_right(x_min,x_max,y_min,y_max,z_min,z_max,halo_excha
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: right_snd_buffer(:)
 
   ! Pack
@@ -120,7 +120,7 @@ SUBROUTINE tea_unpack_message_right(x_min,x_max,y_min,y_max,z_min,z_max,halo_exc
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: right_rcv_buffer(:)
 
   ! Unpack
@@ -148,7 +148,7 @@ SUBROUTINE tea_pack_message_top(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchang
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: top_snd_buffer(:)
 
   ! Pack
@@ -179,7 +179,7 @@ SUBROUTINE tea_unpack_message_top(x_min,x_max,y_min,y_max,z_min,z_max,halo_excha
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: top_rcv_buffer(:)
 
   ! Unpack
@@ -207,7 +207,7 @@ SUBROUTINE tea_pack_message_bottom(x_min,x_max,y_min,y_max,z_min,z_max,halo_exch
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: bottom_snd_buffer(:)
 
   ! Pack
@@ -235,7 +235,7 @@ SUBROUTINE tea_unpack_message_bottom(x_min,x_max,y_min,y_max,z_min,z_max,halo_ex
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: bottom_rcv_buffer(:)
 
   ! Unpack
@@ -263,7 +263,7 @@ SUBROUTINE tea_pack_message_back(x_min,x_max,y_min,y_max,z_min,z_max,halo_exchan
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: back_snd_buffer(:)
 
   ! Pack
@@ -294,7 +294,7 @@ SUBROUTINE tea_unpack_message_back(x_min,x_max,y_min,y_max,z_min,z_max,halo_exch
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: back_rcv_buffer(:)
 
   ! Unpack
@@ -322,7 +322,7 @@ SUBROUTINE tea_pack_message_front(x_min,x_max,y_min,y_max,z_min,z_max,halo_excha
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: front_snd_buffer(:)
 
   ! Pack
@@ -350,7 +350,7 @@ SUBROUTINE tea_unpack_message_front(x_min,x_max,y_min,y_max,z_min,z_max,halo_exc
   INTEGER      :: depth,x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
   INTEGER      :: j,k,l,x_inc,y_inc,z_inc,index,buffer_offset
 
-  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
+  REAL(KIND=8) :: field(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth)
   REAL(KIND=8) :: front_rcv_buffer(:)
 
   ! Unpack
