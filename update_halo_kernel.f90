@@ -53,25 +53,21 @@ CONTAINS
                         p,                                                          &
                         sd,                                                         &
                         fields,                                                     &
-                        reflective_boundary,                                        &
                         depth                                                       )
   IMPLICIT NONE
 
   INTEGER :: x_min,x_max,y_min,y_max,z_min,z_max,halo_exchange_depth
-  LOGICAL :: reflective_boundary
   INTEGER, DIMENSION(6) :: chunk_neighbours
   REAL(KIND=8), DIMENSION(x_min-halo_exchange_depth:x_max+halo_exchange_depth,y_min-halo_exchange_depth:y_max+halo_exchange_depth,z_min-halo_exchange_depth:z_max+halo_exchange_depth) :: density,energy0,energy1, u, sd, p
 
   INTEGER :: fields(NUM_FIELDS),depth
 
-  IF (reflective_boundary .EQV. .TRUE.) THEN
 !$OMP PARALLEL
 
   ! Update values in external halo cells based on depth and fields requested
   ! Even though half of these loops look the wrong way around, it should be noted
   ! that depth is either 1 or 2 so that it is more efficient to always thread
   ! loop along the mesh edge.
-
   IF(fields(FIELD_DENSITY).EQ.1) THEN
     CALL update_halo_cell(x_min, x_max, y_min, y_max, z_min, z_max,   &
       halo_exchange_depth, chunk_neighbours, density, depth)
@@ -103,7 +99,6 @@ CONTAINS
   ENDIF
 
 !$OMP END PARALLEL
-  ENDIF
 
 END SUBROUTINE update_halo_kernel
 

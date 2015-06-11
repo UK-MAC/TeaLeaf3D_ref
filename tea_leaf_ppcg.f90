@@ -82,10 +82,16 @@ SUBROUTINE tea_leaf_kernel_ppcg_inner(x_min,             &
                                       z_min,             &
                                       z_max,             &
                                       halo_exchange_depth,             &
+                                      x_min_bound,      &
+                                      x_max_bound,      &
+                                      y_min_bound,      &
+                                      y_max_bound,      &
+                                      z_min_bound,      &
+                                      z_max_bound,      &
                                       alpha,             &
                                       beta,              &
                                       rx, ry, rz,         &
-                                      outer_step, tl_ppcg_inner_steps,   &
+                                      inner_step,       &
                                       u,                 &
                                       r,                 &
                                       Kx,                &
@@ -107,16 +113,13 @@ SUBROUTINE tea_leaf_kernel_ppcg_inner(x_min,             &
   REAL(KIND=8), DIMENSION(:) :: alpha, beta
   REAL(KIND=8) :: smvp, rx, ry, rz
 
-  INTEGER(KIND=4) :: bounds_extra, outer_step, tl_ppcg_inner_steps, inner_step
+  INTEGER(KIND=4) :: x_min_bound, x_max_bound, y_min_bound, y_max_bound, z_min_bound, z_max_bound, inner_step
 
-  inner_step = outer_step
-
-  DO bounds_extra = halo_exchange_depth-1, 0, -1
 !$OMP PARALLEL PRIVATE(smvp)
 !$OMP DO
-  DO l=z_min-bounds_extra,z_max+bounds_extra
-    DO k=y_min-bounds_extra,y_max+bounds_extra
-        DO j=x_min-bounds_extra,x_max+bounds_extra
+  DO l=z_min_bound,z_max_bound
+    DO k=y_min_bound,y_max_bound
+        DO j=x_min_bound,x_max_bound
             smvp = (1.0_8                                      &
                 + rx*(Kx(j+1, k, l) + Kx(j, k, l))  &
                 + ry*(Ky(j, k+1, l) + Ky(j, k, l))                      &
@@ -126,27 +129,26 @@ SUBROUTINE tea_leaf_kernel_ppcg_inner(x_min,             &
                 - rz*(Kz(j, k, l+1)*sd(j, k, l+1) + Kz(j, k, l)*sd(j, k, l-1))
 
             r(j, k, l) = r(j, k, l) - smvp
-
             u(j, k, l) = u(j, k, l) + sd(j, k, l)
         ENDDO
     ENDDO
   ENDDO
 !$OMP END DO
 
-  IF (preconditioner_type .NE. TL_PREC_NONE) THEN
+    IF (preconditioner_type .NE. TL_PREC_NONE) THEN
 
-    IF (preconditioner_type .EQ. TL_PREC_JAC_BLOCK) THEN
-      CALL tea_block_solve(x_min, x_max, y_min, y_max, z_min, z_max,    &
-        halo_exchange_depth, r, z, cp, bfp, Kx, Ky, Kz, rx, ry, rz)
-    ELSE IF (preconditioner_type .EQ. TL_PREC_JAC_DIAG) THEN
-      CALL tea_diag_solve(x_min, x_max, y_min, y_max, z_min, z_max, &
-        halo_exchange_depth, r, z, Mi)
-    ENDIF
+      IF (preconditioner_type .EQ. TL_PREC_JAC_BLOCK) THEN
+        CALL tea_block_solve(x_min, x_max, y_min, y_max, z_min, z_max,    &
+          halo_exchange_depth, r, z, cp, bfp, Kx, Ky, Kz, rx, ry, rz)
+      ELSE IF (preconditioner_type .EQ. TL_PREC_JAC_DIAG) THEN
+        CALL tea_diag_solve(x_min, x_max, y_min, y_max, z_min, z_max, &
+          halo_exchange_depth, r, z, Mi)
+      ENDIF
 
 !$OMP DO
-  DO l=z_min-bounds_extra,z_max+bounds_extra
-    DO k=y_min-bounds_extra,y_max+bounds_extra
-      DO j=x_min-bounds_extra,x_max+bounds_extra
+  DO l=z_min_bound,z_max_bound
+    DO k=y_min_bound,y_max_bound
+        DO j=x_min_bound,x_max_bound
         sd(j, k, l) = alpha(inner_step)*sd(j, k, l) + beta(inner_step)*z(j, k, l)
       ENDDO
     ENDDO
@@ -154,9 +156,9 @@ SUBROUTINE tea_leaf_kernel_ppcg_inner(x_min,             &
 !$OMP END DO NOWAIT
   ELSE
 !$OMP DO
-  DO l=z_min-bounds_extra,z_max+bounds_extra
-    DO k=y_min-bounds_extra,y_max+bounds_extra
-        DO j=x_min-bounds_extra,x_max+bounds_extra
+  DO l=z_min_bound,z_max_bound
+    DO k=y_min_bound,y_max_bound
+        DO j=x_min_bound,x_max_bound
             sd(j, k, l) = alpha(inner_step)*sd(j, k, l) + beta(inner_step)*r(j, k, l)
         ENDDO
     ENDDO
@@ -164,11 +166,6 @@ SUBROUTINE tea_leaf_kernel_ppcg_inner(x_min,             &
 !$OMP END DO NOWAIT
   ENDIF
 !$OMP END PARALLEL
-
-  inner_step = inner_step + 1
-  IF (inner_step .ge. tl_ppcg_inner_steps) EXIT
-
-  END DO
 
 END SUBROUTINE
 
