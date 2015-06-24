@@ -55,9 +55,9 @@ SUBROUTINE tea_leaf_kernel_jacobi_solve(x_min,       &
 
 !$OMP PARALLEL
 !$OMP DO
-  DO l=z_min,z_max
-    DO k=y_min, y_max
-      DO j=x_min, x_max
+  DO l=z_min-1, z_max+1
+    DO k=y_min-1, y_max+1
+      DO j=x_min-1, x_max+1
         un(j, k, l) = u1(j, k, l)
       ENDDO
     ENDDO
