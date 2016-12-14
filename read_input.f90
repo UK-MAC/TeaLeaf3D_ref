@@ -2,17 +2,17 @@
 !
 ! This file is part of TeaLeaf.
 !
-! TeaLeaf is free software: you can redistribute it and/or modify it under 
-! the terms of the GNU General Public License as published by the 
-! Free Software Foundation, either version 3 of the License, or (at your option) 
+! TeaLeaf is free software: you can redistribute it and/or modify it under
+! the terms of the GNU General Public License as published by the
+! Free Software Foundation, either version 3 of the License, or (at your option)
 ! any later version.
 !
-! TeaLeaf is distributed in the hope that it will be useful, but 
-! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more 
+! TeaLeaf is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
 ! details.
 !
-! You should have received a copy of the GNU General Public License along with 
+! You should have received a copy of the GNU General Public License along with
 ! TeaLeaf. If not, see http://www.gnu.org/licenses/.
 
 !>  @brief Reads the user input
@@ -62,7 +62,7 @@ SUBROUTINE read_input()
   max_iters=1000
   eps=1.0e-10
 
-  use_fortran_kernels=.true.
+  use_fortran_kernels=.TRUE.
   coefficient = CONDUCTIVITY
   profiler_on=.FALSE.
   profiler%timestep=0.0
@@ -72,18 +72,24 @@ SUBROUTINE read_input()
   profiler%tea_init=0.0
   profiler%tea_solve=0.0
   profiler%tea_reset=0.0
+  profiler%dot_product=0.0
 
-  tl_ch_cg_errswitch = .FALSE.
-  tl_ch_cg_presteps = 30
-  tl_ch_cg_epslim = 1e-5
+  tl_ch_cg_presteps = 25
+  tl_ch_cg_epslim = 1.0
   tl_check_result = .FALSE.
-  tl_ppcg_inner_steps = 10
-  tl_preconditioner_on = .FALSE.
+  tl_preconditioner_type = TL_PREC_NONE
+
+  reflective_boundary = .FALSE.
+
+  tl_ppcg_inner_steps = -1
 
   tl_use_chebyshev = .FALSE.
   tl_use_cg = .FALSE.
   tl_use_ppcg = .FALSE.
   tl_use_jacobi = .TRUE.
+  verbose_on = .FALSE.
+
+  halo_exchange_depth=1
 
   IF(parallel%boss)WRITE(g_out,*) 'Reading input file'
   IF(parallel%boss)WRITE(g_out,*)
@@ -171,18 +177,31 @@ SUBROUTINE read_input()
         IF(parallel%boss)WRITE(g_out,"(1x,a25,i12)")'tl_ch_cg_presteps',tl_ch_cg_presteps
       CASE('tl_ppcg_inner_steps')
         tl_ppcg_inner_steps=parse_getival(parse_getword(.TRUE.))
-        IF(parallel%boss)WRITE(g_out,"(1x,a25,i12)")'tl_ppcg_inner_steps',tl_ppcg_inner_steps
       CASE('tl_ch_cg_epslim')
         tl_ch_cg_epslim=parse_getrval(parse_getword(.TRUE.))
         IF(parallel%boss)WRITE(g_out,"(1x,a25,e12.4)")'tl_ch_cg_epslim',tl_ch_cg_epslim
       CASE('tl_check_result')
         tl_check_result = .TRUE.
-      CASE('tl_ch_cg_errswitch')
-        tl_ch_cg_errswitch = .TRUE.
-      CASE('tl_preconditioner_on')
-        tl_preconditioner_on = .TRUE.
+      CASE('tl_preconditioner_type')
+        DO
+          word=parse_getword(.FALSE.)
+          IF(word.EQ.'') EXIT
+          SELECT CASE(word)
+          CASE('none')
+            tl_preconditioner_type=TL_PREC_NONE
+          CASE('jac_diag')
+            tl_preconditioner_type=TL_PREC_JAC_DIAG
+          CASE('jac_block')
+            tl_preconditioner_type=TL_PREC_JAC_BLOCK
+          CASE DEFAULT
+            CALL report_error('read_input', 'Invalid preconditioner type specified: '//word)
+          END SELECT
+          IF(parallel%boss)WRITE(g_out,"(1x,a25,'  ',a25)")'tl_preconditioner_type',word
+        enddo
       CASE('use_fortran_kernels')
         use_fortran_kernels=.TRUE.
+      CASE('verbose_on')
+        verbose_on=.TRUE.
       CASE('tl_use_jacobi')
         tl_use_chebyshev = .FALSE.
         tl_use_cg = .FALSE.
@@ -203,9 +222,15 @@ SUBROUTINE read_input()
         tl_use_cg = .FALSE.
         tl_use_ppcg=.FALSE.
         tl_use_jacobi = .FALSE.
+      CASE('reflective_boundary')
+        reflective_boundary=.TRUE.
       CASE('profiler_on')
         profiler_on=.TRUE.
         IF(parallel%boss)WRITE(g_out,"(1x,a25)")'Profiler on'
+      CASE('halo_depth')
+        halo_exchange_depth = parse_getival(parse_getword(.TRUE.))
+        IF(halo_exchange_depth .lt. 1) CALL report_error('read_input', 'Invalid halo exchange depth specified')
+        IF(parallel%boss)WRITE(g_out,"(1x,a25,i12)")'halo_depth',halo_exchange_depth
       CASE('tl_max_iters')
         max_iters = parse_getival(parse_getword(.TRUE.))
       CASE('tl_eps')
@@ -213,7 +238,7 @@ SUBROUTINE read_input()
       CASE('tl_coefficient_density')
         coefficient = CONDUCTIVITY
         IF(parallel%boss)WRITE(g_out,"(1x,a29)")'Diffusion coefficient density'
-      CASE('tl_coefficient_inverrse_density')
+      CASE('tl_coefficient_inverse_density')
         coefficient = RECIP_CONDUCTIVITY
         IF(parallel%boss)WRITE(g_out,"(1x,a40)")'Diffusion coefficient reciprocal density'
       CASE('test_problem')
@@ -281,6 +306,16 @@ SUBROUTINE read_input()
     ENDDO
   ENDDO
 
+  ! Simple guess - better than a default of 10. Changed for 3D (JDS)
+  if (tl_ppcg_inner_steps .eq. -1) then
+    tl_ppcg_inner_steps = 4*INT(SQRT(SQRT(SQRT(REAL(grid%x_cells*grid%y_cells*grid%z_cells)))))
+    IF(parallel%boss)WRITE(g_out,"(1x,a25,i12)")'tl_ppcg_inner_steps',tl_ppcg_inner_steps
+  endif
+
+  if ((halo_exchange_depth .gt. 1) .and. (tl_preconditioner_type .eq. TL_PREC_JAC_BLOCK) .and. tl_use_ppcg) then
+    call report_error('read_input', 'Unable to use nonstandard halo depth with block jacobi preconditioner')
+  endif
+
   IF(parallel%boss) THEN
     WRITE(g_out,*)
     IF(use_fortran_kernels) THEN
@@ -291,15 +326,17 @@ SUBROUTINE read_input()
     WRITE(g_out,*)
   ENDIF
 
+  CALL flush(g_out)
+
   ! If a state boundary falls exactly on a cell boundary then round off can
   ! cause the state to be put one cell further that expected. This is compiler
   ! /system dependent. To avoid this, a state boundary is reduced/increased by a 100th
   ! of a cell width so it lies well with in the intended cell.
   ! Because a cell is either full or empty of a specified state, this small
   ! modification to the state extents does not change the answers.
-  dx=(grid%xmax-grid%xmin)/float(grid%x_cells)
-  dy=(grid%ymax-grid%ymin)/float(grid%y_cells)
-  dz=(grid%zmax-grid%zmin)/float(grid%z_cells)
+  dx=(grid%xmax-grid%xmin)/REAL(grid%x_cells)
+  dy=(grid%ymax-grid%ymin)/REAL(grid%y_cells)
+  dz=(grid%zmax-grid%zmin)/REAL(grid%z_cells)
   DO n=2,number_of_states
     states(n)%xmin=states(n)%xmin+(dx/100.0_8)
     states(n)%ymin=states(n)%ymin+(dy/100.0_8)

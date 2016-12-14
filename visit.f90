@@ -2,21 +2,21 @@
 !
 ! This file is part of TeaLeaf.
 !
-! TeaLeaf is free software: you can redistribute it and/or modify it under 
-! the terms of the GNU General Public License as published by the 
-! Free Software Foundation, either version 3 of the License, or (at your option) 
+! TeaLeaf is free software: you can redistribute it and/or modify it under
+! the terms of the GNU General Public License as published by the
+! Free Software Foundation, either version 3 of the License, or (at your option)
 ! any later version.
 !
-! TeaLeaf is distributed in the hope that it will be useful, but 
-! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more 
+! TeaLeaf is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
 ! details.
 !
-! You should have received a copy of the GNU General Public License along with 
+! You should have received a copy of the GNU General Public License along with
 ! TeaLeaf. If not, see http://www.gnu.org/licenses/.
 
 !>  @brief Generates graphics output files.
-!>  @author David Beckingsale, Wayne Gaudin
+!>  @author David Beckingsale, Wayne Gaudin, Douglas Shanks
 !>  @details The field data over all mesh chunks is written to a .vtk files and
 !>  the .visit file is written that defines the time for each set of vtk files.
 
@@ -29,15 +29,12 @@ SUBROUTINE visit
 
   INTEGER :: j,k,l,c,err,get_unit,u,dummy
   INTEGER :: nxc,nyc,nzc,nxv,nyv,nzv,nblocks
-  REAL(KIND=8)    :: temp_var
 
   CHARACTER(len=80)           :: name
   CHARACTER(len=10)           :: chunk_name,step_name
   CHARACTER(len=90)           :: filename
 
   LOGICAL, SAVE :: first_call=.TRUE.
-
-  INTEGER :: fields(NUM_FIELDS)
 
   REAL(KIND=8) :: kernel_time,timer
 
@@ -62,7 +59,7 @@ SUBROUTINE visit
     u=get_unit(dummy)
     OPEN(UNIT=u,FILE=filename,STATUS='UNKNOWN',POSITION='APPEND',IOSTAT=err)
 
-    DO c = 1, chunks_per_task
+    DO c = 1, number_of_chunks
       WRITE(chunk_name, '(i6)') c+100000
       chunk_name(1:1) = "."
       WRITE(step_name, '(i6)') step+100000
@@ -107,10 +104,30 @@ SUBROUTINE visit
       DO l=chunks(c)%field%z_min,chunks(c)%field%z_max+1
         WRITE(u,'(e12.4)')chunks(c)%field%vertexz(l)
       ENDDO
+        WRITE(u,'(a,i20)')'CELL_DATA ',nxc*nyc*nzc
       WRITE(u,'(a)')'FIELD FieldData 3'
-      WRITE(u,'(a,i20,a)')'x_vel 1 ',nxv*nyv*nzv,' double'
-      WRITE(u,'(a,i20,a)')'y_vel 1 ',nxv*nyv*nzv,' double'
-      CLOSE(u)
+!        WRITE(u,'(a,i20,a)')'x_vel 1 ',nxv*nyv*nzv,' double'
+!        WRITE(u,'(a,i20,a)')'y_vel 1 ',nxv*nyv*nzv,' double'
+!        WRITE(u,'(a,i20,a)')'z_vel 1 ',nxv*nyv*nzv,' double'
+       WRITE(u,'(a,i20,a)')'density 1 ',nxc*nyc*nzc,' double'
+      DO l=chunks(c)%field%z_min,chunks(c)%field%z_max
+        DO k=chunks(c)%field%y_min,chunks(c)%field%y_max
+        WRITE(u,'(e12.4)')(chunks(c)%field%density(j,k,l),j=chunks(c)%field%x_min,chunks(c)%field%x_max)
+        ENDDO
+      ENDDO
+        WRITE(u,'(a,i20,a)')'energy 1 ',nxc*nyc*nzc,' double'
+      DO l=chunks(c)%field%z_min,chunks(c)%field%z_max
+        DO k=chunks(c)%field%y_min,chunks(c)%field%y_max
+        WRITE(u,'(e12.4)')(chunks(c)%field%energy0(j,k,l),j=chunks(c)%field%x_min,chunks(c)%field%x_max)
+        ENDDO
+      ENDDO
+        WRITE(u,'(a,i20,a)')'temperature 1 ',nxc*nyc*nzc,' double'
+      DO l=chunks(c)%field%z_min,chunks(c)%field%z_max
+        DO k=chunks(c)%field%y_min,chunks(c)%field%y_max
+           WRITE(u,'(e12.4)')(chunks(c)%field%u(j,k,l),j=chunks(c)%field%x_min,chunks(c)%field%x_max)
+        ENDDO 
+      ENDDO
+
     ENDIF
   ENDDO
   IF(profiler_on) profiler%visit=profiler%visit+(timer()-kernel_time)

@@ -1,0 +1,227 @@
+ 
+   Tea Version    1.200
+       MPI Version
+    OpenMP Version
+   Task Count     24
+ Thread Count:     1
+ 
+ Tea will run from the following input:-
+ 
+*tea                                                                                                                                                       
+state 1 density=100.0 energy=0.0001                                                                 
+state 2 density=0.1 energy=25.0 geometry=cuboid xmin=1.0 xmax=2.0 ymin=1.0 ymax=2.0 zmin=0.0 zmax=1.
+state 3 density=0.1 energy=0.1 geometry=cuboid xmin=1.0 xmax=2.0 ymin=1.0 ymax=2.0 zmin=1.0 zmax=6.0
+state 4 density=0.1 energy=0.1 geometry=cuboid xmin=2.0 xmax=6.0 ymin=1.0 ymax=2.0 zmin=5.0 zmax=6.0
+state 5 density=0.1 energy=0.1 geometry=cuboid xmin=5.0 xmax=6.0 ymin=1.0 ymax=8.0 zmin=5.0 zmax=6.0
+state 6 density=0.1 energy=0.1 geometry=cuboid xmin=5.0 xmax=9.0 ymin=7.0 ymax=8.0 zmin=5.0 zmax=6.0
+state 7 density=0.1 energy=0.1 geometry=cuboid xmin=8.0 xmax=9.0 ymin=7.0 ymax=8.0 zmin=5.0 zmax=10.
+                                                                                                    
+x_cells=250                                                                                         
+y_cells=250                                                                                         
+z_cells=250                                                                                         
+xmin=0.0                                                                                            
+ymin=0.0                                                                                            
+zmin=0.0                                                                                            
+xmax=10.0                                                                                           
+ymax=10.0                                                                                           
+zmax=10.0                                                                                           
+                                                                                                    
+! Timestep and solver info                                                                          
+initial_timestep=0.004                                                                              
+end_step=10                                                                                         
+tl_max_iters=10000                                                                                  
+! test_problem 1                                                                                    
+tl_use_cg                                                                                           
+tl_preconditioner_type = none                                                                       
+tl_eps=1.0e-15                                                                                      
+*tea                                                                                                
+ 
+ Initialising and generating
+ 
+ Reading input file
+ 
+ Reading specification for state            1
+ 
+            state density   0.1000E+03
+             state energy   0.1000E-03
+ 
+ Reading specification for state            2
+ 
+            state density   0.1000E+00
+             state energy   0.2500E+02
+ state geometry rectangular
+               state xmin   0.1000E+01
+               state xmax   0.2000E+01
+               state ymin   0.1000E+01
+               state ymax   0.2000E+01
+               state zmin   0.0000E+00
+               state zmax   0.1000E+01
+ 
+ Reading specification for state            3
+ 
+            state density   0.1000E+00
+             state energy   0.1000E+00
+ state geometry rectangular
+               state xmin   0.1000E+01
+               state xmax   0.2000E+01
+               state ymin   0.1000E+01
+               state ymax   0.2000E+01
+               state zmin   0.1000E+01
+               state zmax   0.6000E+01
+ 
+ Reading specification for state            4
+ 
+            state density   0.1000E+00
+             state energy   0.1000E+00
+ state geometry rectangular
+               state xmin   0.2000E+01
+               state xmax   0.6000E+01
+               state ymin   0.1000E+01
+               state ymax   0.2000E+01
+               state zmin   0.5000E+01
+               state zmax   0.6000E+01
+ 
+ Reading specification for state            5
+ 
+            state density   0.1000E+00
+             state energy   0.1000E+00
+ state geometry rectangular
+               state xmin   0.5000E+01
+               state xmax   0.6000E+01
+               state ymin   0.1000E+01
+               state ymax   0.8000E+01
+               state zmin   0.5000E+01
+               state zmax   0.6000E+01
+ 
+ Reading specification for state            6
+ 
+            state density   0.1000E+00
+             state energy   0.1000E+00
+ state geometry rectangular
+               state xmin   0.5000E+01
+               state xmax   0.9000E+01
+               state ymin   0.7000E+01
+               state ymax   0.8000E+01
+               state zmin   0.5000E+01
+               state zmax   0.6000E+01
+ 
+ Reading specification for state            7
+ 
+            state density   0.1000E+00
+             state energy   0.1000E+00
+ state geometry rectangular
+               state xmin   0.8000E+01
+               state xmax   0.9000E+01
+               state ymin   0.7000E+01
+               state ymax   0.8000E+01
+               state zmin   0.5000E+01
+               state zmax   0.1000E+02
+ 
+                   x_cells         250
+                   y_cells         250
+                   z_cells         250
+                      xmin  0.0000E+00
+                      ymin  0.0000E+00
+                      zmin  0.0000E+00
+                      xmax  0.1000E+02
+                      ymax  0.1000E+02
+                      zmax  0.1000E+02
+         initial_timestep   0.4000E-02
+                  end_step          10
+    tl_preconditioner_type  none                     
+       tl_ppcg_inner_steps          28
+ 
+ Using Fortran Kernels
+ 
+ Input read finished.
+ 
+ Setting up initial geometry
+ 
+ 
+ Decomposing the mesh into            3  by            4  by            2  chunk
+ s
+ 
+ Generating chunks
+ 
+ Problem initialised and generated
+ 
+ Time   0.000000000000000E+000
+                                 Volume                      Mass                   Density                    Energy                         U
+ step:      0   0.99999999999674901E+03   0.97702300001525640E+05   0.97702300001843270E+02   0.12490000000019441E+02   0.97727199999615550E+03
+ 
+ Starting the calculation
+ Step       1 time   0.0000000 timestep   4.00E-03
+Conduction error  0.9021700E-15
+Iteration count      280
+ Wall clock    5.26350402832031     
+ Average time per cell   8.421606445312500E-005
+ Step time per cell      8.421604919433594E-005
+ Step       2 time   0.0040000 timestep   4.00E-03
+Conduction error  0.9371704E-15
+Iteration count      296
+ Wall clock    10.8086979389191     
+ Average time per cell   8.646958351135253E-005
+ Step time per cell      8.872212600708008E-005
+ Step       3 time   0.0080000 timestep   4.00E-03
+Conduction error  0.9661553E-15
+Iteration count      297
+ Wall clock    16.3591630458832     
+ Average time per cell   8.724886957804362E-005
+ Step time per cell      8.880680084228515E-005
+ Step       4 time   0.0120000 timestep   4.00E-03
+Conduction error  0.8887347E-15
+Iteration count      292
+ Wall clock    21.8158359527588     
+ Average time per cell   8.726334381103515E-005
+ Step time per cell      8.730611038208008E-005
+ Step       5 time   0.0160000 timestep   4.00E-03
+Conduction error  0.9792643E-15
+Iteration count      283
+ Wall clock    29.8750848770142     
+ Average time per cell   9.560027160644531E-005
+ Step time per cell      1.289473571777344E-004
+ Step       6 time   0.0200000 timestep   4.00E-03
+Conduction error  0.9541611E-15
+Iteration count      274
+ Wall clock    37.6604170799255     
+ Average time per cell   1.004277788798014E-004
+ Step time per cell      1.245646743774414E-004
+ Step       7 time   0.0240000 timestep   4.00E-03
+Conduction error  0.9532187E-15
+Iteration count      265
+ Wall clock    45.1860380172729     
+ Average time per cell   1.032823726109096E-004
+ Step time per cell      1.204092788696289E-004
+ Step       8 time   0.0280000 timestep   4.00E-03
+Conduction error  0.9781753E-15
+Iteration count      256
+ Wall clock    52.4728729724884     
+ Average time per cell   1.049457459449768E-004
+ Step time per cell      1.165887031555176E-004
+ Step       9 time   0.0320000 timestep   4.00E-03
+Conduction error  0.9886904E-15
+Iteration count      248
+ Wall clock    59.5514919757843     
+ Average time per cell   1.058693190680610E-004
+ Step time per cell      1.132572784423828E-004
+ Step      10 time   0.0360000 timestep   4.00E-03
+Conduction error  0.9685069E-15
+Iteration count      241
+ 
+ Time   4.000000000000001E-002
+                                 Volume                      Mass                   Density                    Energy                         U
+ step:     10   0.99999999999674901E+03   0.97702300001525640E+05   0.97702300001843270E+02   0.12489999999997359E+02   0.10181900102318201E+04
+ 
+ Wall clock    66.4568228721619     
+ Average time per cell   1.063309165954590E-004
+ Step time per cell      1.104845466613770E-004
+ 
+ Time   4.000000000000001E-002
+                                 Volume                      Mass                   Density                    Energy                         U
+ step:     10   0.99999999999674901E+03   0.97702300001525640E+05   0.97702300001843270E+02   0.12489999999997359E+02   0.10181900102318201E+04
+ 
+ 
+ Calculation complete
+ Tea is finishing
+ First step overhead -0.281630754470825     
+ Wall clock    66.4609549045563     

@@ -23,7 +23,7 @@ MODULE data_module
 
    IMPLICIT NONE
 
-   REAL(KIND=8), PARAMETER :: g_version=1.1
+   REAL(KIND=8), PARAMETER :: g_version=1.2
 
    INTEGER,      PARAMETER :: g_ibig=640000
 
@@ -50,7 +50,8 @@ MODULE data_module
                                 ,FIELD_U          = 4         &
                                 ,FIELD_P          = 5         &
                                 ,FIELD_SD         = 6         &
-                                ,NUM_FIELDS       = 6
+                                ,FIELD_R          = 7         &
+                                ,NUM_FIELDS       = 7
 
    INTEGER,         PARAMETER :: CELL_DATA     = 1,        &
                                  VERTEX_DATA   = 2,        &
@@ -62,15 +63,20 @@ MODULE data_module
    ! Time step control constants
    INTEGER,        PARAMETER ::  FIXED = 1
 
-   INTEGER,                      PARAMETER :: g_rect=1 &
-                                             ,g_circ=2 &
-                                             ,g_point=3
+   INTEGER,                      PARAMETER :: g_rect = 1  &
+                                             ,g_circ = 2  &
+                                             ,g_point = 3
 
    INTEGER         ::            g_in           & ! File for input data.
                                 ,g_out
 
    INTEGER         ::            CONDUCTIVITY        = 1 &
                                 ,RECIP_CONDUCTIVITY  = 2
+
+   ! 3 different options for preconditioners
+   INTEGER,PARAMETER::           TL_PREC_NONE       = 1 &
+                                ,TL_PREC_JAC_DIAG   = 2 &
+                                ,TL_PREC_JAC_BLOCK  = 3
 
    TYPE parallel_type
       LOGICAL           ::      parallel &
@@ -83,8 +89,15 @@ MODULE data_module
 
    TYPE(parallel_type) :: parallel
 
-   INTEGER,        PARAMETER ::g_len_max=500
-   INTEGER,        PARAMETER ::chunks_per_task=1
+   INTEGER,        PARAMETER ::g_len_max = 500
+   INTEGER,        PARAMETER ::chunks_per_task = 1
+
+   ! cartesian communicator
+   INTEGER                   ::mpi_cart_comm
+   ! dimensions of mpi grid
+   INTEGER, dimension(3)     ::mpi_dims
+   ! this rank's coordinates
+   INTEGER, dimension(3)     ::mpi_coords
 
    INTEGER                   ::lr_pack_buffer_size,bt_pack_buffer_size,fb_pack_buffer_size
 

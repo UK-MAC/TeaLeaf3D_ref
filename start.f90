@@ -2,17 +2,17 @@
 !
 ! This file is part of TeaLeaf.
 !
-! TeaLeaf is free software: you can redistribute it and/or modify it under 
-! the terms of the GNU General Public License as published by the 
-! Free Software Foundation, either version 3 of the License, or (at your option) 
+! TeaLeaf is free software: you can redistribute it and/or modify it under
+! the terms of the GNU General Public License as published by the
+! Free Software Foundation, either version 3 of the License, or (at your option)
 ! any later version.
 !
-! TeaLeaf is distributed in the hope that it will be useful, but 
-! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more 
+! TeaLeaf is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
 ! details.
 !
-! You should have received a copy of the GNU General Public License along with 
+! You should have received a copy of the GNU General Public License along with
 ! TeaLeaf. If not, see http://www.gnu.org/licenses/.
 
 !>  @brief Main set up routine
@@ -26,6 +26,7 @@ SUBROUTINE start
   USE tea_module
   USE parse_module
   USE update_halo_module
+  USE set_field_module
 
   IMPLICIT NONE
 
@@ -39,7 +40,7 @@ SUBROUTINE start
   LOGICAL :: profiler_off
 
   IF(parallel%boss)THEN
-    WrITE(g_out,*) 'Setting up initial geometry'
+    WRITE(g_out,*) 'Setting up initial geometry'
     WRITE(g_out,*)
   ENDIF
 
@@ -51,19 +52,18 @@ SUBROUTINE start
 
   CALL tea_get_num_chunks(number_of_chunks)
 
-  ALLOCATE(chunks(1:number_of_chunks))
-
-  ALLOCATE(left(1:number_of_chunks))
-  ALLOCATE(right(1:number_of_chunks))
-  ALLOCATE(bottom(1:number_of_chunks))
-  ALLOCATE(top(1:number_of_chunks))
-  ALLOCATE(back(1:number_of_chunks))
-  ALLOCATE(front(1:number_of_chunks))
+  ALLOCATE(chunks(1:chunks_per_task))
+  ALLOCATE(left(1:chunks_per_task))
+  ALLOCATE(right(1:chunks_per_task))
+  ALLOCATE(bottom(1:chunks_per_task))
+  ALLOCATE(top(1:chunks_per_task))
+  ALLOCATE(back(1:chunks_per_task))
+  ALLOCATE(front(1:chunks_per_task))
 
   CALL tea_decompose(grid%x_cells,grid%y_cells, grid%z_cells,left,right,bottom,top, back, front)
 
   DO c=1,chunks_per_task
-      
+
     ! Needs changing so there can be more than 1 chunk per task
     chunks(c)%task = parallel%task
 
@@ -136,12 +136,15 @@ SUBROUTINE start
   fields(FIELD_ENERGY0)=1
   fields(FIELD_ENERGY1)=1
 
-  CALL update_halo(fields,2)
+  CALL update_halo(fields,halo_exchange_depth)
 
   IF(parallel%boss)THEN
      WRITE(g_out,*)
      WRITE(g_out,*) 'Problem initialised and generated'
   ENDIF
+
+  ! copy time level 0 to time level 1 before the first print
+  CALL set_field()
 
   CALL field_summary()
 

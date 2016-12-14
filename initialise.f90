@@ -2,17 +2,17 @@
 !
 ! This file is part of TeaLeaf.
 !
-! TeaLeaf is free software: you can redistribute it and/or modify it under 
-! the terms of the GNU General Public License as published by the 
-! Free Software Foundation, either version 3 of the License, or (at your option) 
+! TeaLeaf is free software: you can redistribute it and/or modify it under
+! the terms of the GNU General Public License as published by the
+! Free Software Foundation, either version 3 of the License, or (at your option)
 ! any later version.
 !
-! TeaLeaf is distributed in the hope that it will be useful, but 
-! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more 
+! TeaLeaf is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
 ! details.
 !
-! You should have received a copy of the GNU General Public License along with 
+! You should have received a copy of the GNU General Public License along with
 ! TeaLeaf. If not, see http://www.gnu.org/licenses/.
 
 !>  @brief Top level initialisation routine
@@ -76,13 +76,15 @@ SUBROUTINE initialise
       OPEN(FILE='tea.in',UNIT=out_unit,STATUS='REPLACE',ACTION='WRITE',IOSTAT=ios)
       WRITE(out_unit,'(A)')'*tea'
       WRITE(out_unit,'(A)')' state 1 density=100.0 energy=0.0001'
-      WRITE(out_unit,'(A)')' state 2 density=0.1 energy=25.0 geometry=rectangle xmin=0.0 xmax=1.0 ymin=1.0 ymax=2.0'
-      WRITE(out_unit,'(A)')' state 3 density=0.1 energy=0.1 geometry=rectangle xmin=1.0 xmax=6.0 ymin=1.0 ymax=2.0'
-      WRITE(out_unit,'(A)')' state 4 density=0.1 energy=0.1 geometry=rectangle xmin=5.0 xmax=6.0 ymin=1.0 ymax=8.0'
-      WRITE(out_unit,'(A)')' state 5 density=0.1 energy=0.1 geometry=rectangle xmin=5.0 xmax=10.0 ymin=7.0 ymax=8.0'
+      WRITE(out_unit,'(A)')' state 2 density=0.1 energy=25.0 geometry=cuboid xmin=1.0 xmax=2.0 ymin=1.0 ymax=2.0 zmin=0.0 zmax=1.0'
+      WRITE(out_unit,'(A)')' state 3 density=0.1 energy=0.1 geometry=cuboid xmin=1.0 xmax=2.0 ymin=1.0 ymax=2.0 zmin=1.0 zmax=6.0'
+      WRITE(out_unit,'(A)')' state 4 density=0.1 energy=0.1 geometry=cuboid xmin=2.0 xmax=6.0 ymin=1.0 ymax=2.0 zmin=5.0 zmax=6.0'
+      WRITE(out_unit,'(A)')' state 5 density=0.1 energy=0.1 geometry=cuboid xmin=5.0 xmax=6.0 ymin=1.0 ymax=8.0 zmin=5.0 zmax=6.0'
+      WRITE(out_unit,'(A)')' state 6 density=0.1 energy=0.1 geometry=cuboid xmin=5.0 xmax=9.0 ymin=7.0 ymax=8.0 zmin=5.0 zmax=6.0'
+      WRITE(out_unit,'(A)')' state 7 density=0.1 energy=0.1 geometry=cuboid xmin=8.0 xmax=9.0 ymin=7.0 ymax=8.0 zmin=5.0 zmax=10.0'
       WRITE(out_unit,'(A)')' x_cells=10'
       WRITE(out_unit,'(A)')' y_cells=10'
-      WRITE(out_unit,'(A)')' z_cells=2'
+      WRITE(out_unit,'(A)')' z_cells=10'
       WRITE(out_unit,'(A)')' xmin=0.0'
       WRITE(out_unit,'(A)')' ymin=0.0'
       WRITE(out_unit,'(A)')' zmin=0.0'
@@ -93,8 +95,8 @@ SUBROUTINE initialise
       WRITE(out_unit,'(A)')' end_step=10'
       WRITE(out_unit,'(A)')' tl_max_iters=1000'
       WRITE(out_unit,'(A)')' test_problem 1'
-      WRITE(out_unit,'(A)')' tl_use_jacobi'
-      WRITE(out_unit,'(A)')' tl_eps=1.0e-15'
+      WRITE(out_unit,'(A)')'tl_use_jacobi'
+      WRITE(out_unit,'(A)')'tl_eps=1.0e-15'
       WRITE(out_unit,'(A)')'*endtea'
       CLOSE(out_unit)
       uin=get_unit(dummy)
@@ -125,7 +127,7 @@ SUBROUTINE initialise
 
   IF(parallel%boss)THEN
      REWIND(uin)
-     DO 
+     DO
         READ(UNIT=uin,IOSTAT=ios,FMT='(a100)') ltmp ! Read in next line.
         IF(ios.NE.0)EXIT
         WRITE(g_out,FMT='(a100)') ltmp

@@ -133,13 +133,19 @@ In the event that both the above options are set, the simulation will terminate 
 
 `ymax <R>`
 
-The above four options set the size of the computational domain. The default domain size is a 10cm square. 
+`zmin <R>`
+
+`zmax <R>`
+
+The above six options set the size of the computational domain. The default domain size is a 10cm cube. 
 
 `x_cells <I>`
 
 `y_cells <I>`
 
-The two options above set the cell count for each coordinate direction. The default is 10 cells in each direction.
+`z_cells <I>`
+
+The three options above set the cell count for each coordinate direction. The default is 10 cells in each direction.
 
 The geometric information and initial conditions are set using the following keywords with three possible variations. Note that state 1 is always the ambient material and any geometry information is ignored. Areas not covered by other defined states receive the energy and density of state 1.
 
@@ -185,9 +191,13 @@ Default error to switch from CG to Chebyshev when using Chebyshev solver with th
 
 After the solver reaches convergence, calculate ||b-Ax|| to make sure the solver has actually converged. The default for this option is off.
 
-`tl_preconditioner_on`
+`tl_preconditioner_type`
 
-This keyword invokes the pre-conditioner. The only pre-conditioner available is a diagonal scaling. This is a simple precoditioner and may not accelerate the time to solution or reduce the iteration count. By default, no pre-conditioner is used.
+This keyword invokes the pre-conditioner. Options are:
+
+* `none` - No preconditioner.
+* `jac_diag` - Diagonal Jacobi preconditioner. Typically reduces condition number by around 5% but may not reduce time to solution
+* `jac_block` - Block Jacobi preconditioner (with a currently hardcoded block size of 4). Typically reduces the condition number by around 50% but may not reduce time to solution
 
 `tl_use_jacobi`
 
@@ -199,7 +209,7 @@ This keyword selects the Conjugate Gradient method to solve the linear system.
 
 `tl_use_ppcg`
 
-This keyword selects the Conjugate Gradient method to solve the linear system.
+This keyword selects the Polynomially preconditioned Conjugate Gradient method to solve the linear system.
 
 `tl_use_chebyshev`
 
@@ -207,7 +217,12 @@ This keyword selects the Chebyshev method to solve the linear system.
 
 `profiler_on`
 
+
 This option turns the code's coarse grained internal profiler end. Timing information is reported at the end of the simulation in the tea.out file. The default is no profiling.
+
+`verbose_on`
+
+The option prints out extra information such as residual per iteration of a solve.
 
 `tl_max_iters <I>`
 
@@ -217,11 +232,11 @@ This option provides an upper limit of the number of iterations used for the lin
 
 This option sets the convergence criteria for the selected solver. It uses a least squares measure of the residual. The default value is 1.0e-10.
 
-`tl_coefficient_density
+`tl_coefficient_density`
 
 This option uses the density as the conduction coefficient. This is the default option.
 
-`tl_coefficient_inverrse_density
+`tl_coefficient_inverrse_density`
 
 This option uses the inverse density as the conduction coefficient.
 

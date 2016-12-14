@@ -2,17 +2,17 @@
 !
 ! This file is part of TeaLeaf.
 !
-! TeaLeaf is free software: you can redistribute it and/or modify it under 
-! the terms of the GNU General Public License as published by the 
-! Free Software Foundation, either version 3 of the License, or (at your option) 
+! TeaLeaf is free software: you can redistribute it and/or modify it under
+! the terms of the GNU General Public License as published by the
+! Free Software Foundation, either version 3 of the License, or (at your option)
 ! any later version.
 !
-! TeaLeaf is distributed in the hope that it will be useful, but 
-! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more 
+! TeaLeaf is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
 ! details.
 !
-! You should have received a copy of the GNU General Public License along with 
+! You should have received a copy of the GNU General Public License along with
 ! TeaLeaf. If not, see http://www.gnu.org/licenses/.
 
 !>  @brief Driver for the field summary kernels
@@ -43,7 +43,7 @@ SUBROUTINE field_summary()
   IF(parallel%boss)THEN
     WRITE(g_out,*)
     WRITE(g_out,*) 'Time ',time
-    WRITE(g_out,'(a13,5a16)')'           ','Volume','Mass','Density'       &
+    WRITE(g_out,'(a13,5a26)')'           ','Volume','Mass','Density'       &
                                           ,'Energy','U'
   ENDIF
 
@@ -57,9 +57,10 @@ SUBROUTINE field_summary()
                                   chunks(c)%field%y_max,                   &
                                   chunks(c)%field%z_min,                   &
                                   chunks(c)%field%z_max,                   &
+                                  halo_exchange_depth,                     &
                                   chunks(c)%field%volume,                  &
                                   chunks(c)%field%density,                 &
-                                  chunks(c)%field%energy0,                 &
+                                  chunks(c)%field%energy1,                 &
                                   chunks(c)%field%u,                       &
                                   vol,mass,ie,temp                         )
       ENDIF
@@ -75,23 +76,33 @@ SUBROUTINE field_summary()
 
   IF(parallel%boss) THEN
 !$  IF(OMP_GET_THREAD_NUM().EQ.0) THEN
-      WRITE(g_out,'(a6,i7,5e16.7)')' step:',step,vol,mass,mass/vol,ie,temp
+      WRITE(g_out,'(a6,i7,5e26.17)')' step:',step,vol,mass,mass/vol,ie,temp
       WRITE(g_out,*)
+      CALL FLUSH(g_out)
 !$  ENDIF
   ENDIF
 
   !Check if this is the final call and if it is a test problem, check the result.
+  
   IF(complete) THEN
     IF(parallel%boss) THEN
 !$    IF(OMP_GET_THREAD_NUM().EQ.0) THEN
         IF(test_problem.GE.1) THEN
-  ! Note that the "correct" solution is with IEEE switched on, 1 task, 1 thread, Intel compiler on Ivy Bridge
-          IF(test_problem.EQ.1) qa_diff=ABS((100.0_8*(temp/157.550841832793_8))-100.0_8)
-          IF(test_problem.EQ.2) qa_diff=ABS((100.0_8*(temp/116.067951160930_8))-100.0_8)
-          IF(test_problem.EQ.3) qa_diff=ABS((100.0_8*(temp/95.4865103390698_8))-100.0_8)
-          IF(test_problem.EQ.4) qa_diff=ABS((100.0_8*(temp/166.838315378708_8))-100.0_8)
-          IF(test_problem.EQ.5) qa_diff=ABS((100.0_8*(temp/116.482111627676_8))-100.0_8)
-          ! TODO Get reference results for 3d
+        
+          ! Note that the "correct" solution is with IEEE switched on, 1 task, 1 thread, Intel compiler on a Haswell, except 
+          ! test_problem 3,6 which use 24 tasks, 1 thread.
+          ! 10x10x10 for 10 steps and an initial timestep of 0.004
+          IF(test_problem.EQ.1) qa_diff=ABS((100.0_8*(temp/1099.6237305862667_8))-100.0_8)
+          ! 125x125x125 for 10 steps and an initial timestep of 0.004
+          IF(test_problem.EQ.2) qa_diff=ABS((100.0_8*(temp/1039.0046623461017_8))-100.0_8)
+          ! 250x250x250 for 10 steps and an initial timestep of 0.004
+          IF(test_problem.EQ.3) qa_diff=ABS((100.0_8*(temp/1018.1900102318201_8))-100.0_8)
+          ! 10x10x10 for 10 steps and an initial timestep of 0.04
+          IF(test_problem.EQ.4) qa_diff=ABS((100.0_8*(temp/1176.3114252290486_8))-100.0_8)
+          ! 125x125x125 for 10 steps and an initial timestep of 0.04
+          IF(test_problem.EQ.5) qa_diff=ABS((100.0_8*(temp/1059.3367981751865_8))-100.0_8)
+          ! 250x250x250 for 10 steps and an initial timestep of 0.04
+          IF(test_problem.EQ.6) qa_diff=ABS((100.0_8*(temp/1048.0589335736477_8))-100.0_8)
 
           WRITE(*,'(a,i4,a,e16.7,a)')"Test problem", Test_problem," is within",qa_diff,"% of the expected solution"
           WRITE(g_out,'(a,i4,a,e16.7,a)')"Test problem", Test_problem," is within",qa_diff,"% of the expected solution"

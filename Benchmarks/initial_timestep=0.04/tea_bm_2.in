@@ -1,5 +1,4 @@
 *tea
-!Input state
 state 1 density=100.0 energy=0.0001
 state 2 density=0.1 energy=25.0 geometry=cuboid xmin=1.0 xmax=2.0 ymin=1.0 ymax=2.0 zmin=0.0 zmax=1.0
 state 3 density=0.1 energy=0.1 geometry=cuboid xmin=1.0 xmax=2.0 ymin=1.0 ymax=2.0 zmin=1.0 zmax=6.0
@@ -8,10 +7,9 @@ state 5 density=0.1 energy=0.1 geometry=cuboid xmin=5.0 xmax=6.0 ymin=1.0 ymax=8
 state 6 density=0.1 energy=0.1 geometry=cuboid xmin=5.0 xmax=9.0 ymin=7.0 ymax=8.0 zmin=5.0 zmax=6.0
 state 7 density=0.1 energy=0.1 geometry=cuboid xmin=8.0 xmax=9.0 ymin=7.0 ymax=8.0 zmin=5.0 zmax=10.0
 
-! Grid information
-x_cells=50
-y_cells=50
-z_cells=50
+x_cells=125
+y_cells=125
+z_cells=125
 xmin=0.0
 ymin=0.0
 zmin=0.0
@@ -20,11 +18,11 @@ ymax=10.0
 zmax=10.0
 
 ! Timestep and solver info
-initial_timestep=0.004
+initial_timestep=0.04
 end_step=10
 tl_max_iters=10000
-!test_problem 1
-tl_use_ppcg
-tl_preconditioner_type = jac_block
+! test_problem 1
+tl_use_cg
+tl_preconditioner_type = none
 tl_eps=1.0e-15
 *tea

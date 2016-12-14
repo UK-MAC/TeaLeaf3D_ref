@@ -32,6 +32,7 @@
 !>  that do not change the underlying numerical method. For example, the
 !>  volume, though constant for all cells, should remain array and not be
 !>  converted to a scalar.
+
 PROGRAM tea_leaf
 
   USE tea_module
@@ -68,6 +69,6 @@ PROGRAM tea_leaf
   CALL diffuse
 
   ! Deallocate everything
-  
+
 END PROGRAM tea_leaf
 

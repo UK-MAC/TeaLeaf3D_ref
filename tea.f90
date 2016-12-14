@@ -33,9 +33,11 @@ MODULE tea_module
 
   USE data_module
   USE definitions_module
+  USE pack_module
   !USE MPI
 
   IMPLICIT NONE
+
   include "mpif.h"
 
 CONTAINS
@@ -44,7 +46,7 @@ SUBROUTINE tea_barrier
 
   INTEGER :: err
 
-  CALL MPI_BARRIER(MPI_COMM_WORLD,err)
+  CALL MPI_BARRIER(mpi_cart_comm,err)
 
 END SUBROUTINE tea_barrier
 
@@ -52,7 +54,7 @@ SUBROUTINE tea_abort
 
   INTEGER :: ierr,err
 
-  CALL MPI_ABORT(MPI_COMM_WORLD,ierr,err)
+  CALL MPI_ABORT(mpi_cart_comm,ierr,err)
 
 END SUBROUTINE tea_abort
 
@@ -73,14 +75,25 @@ SUBROUTINE tea_init_comms
   IMPLICIT NONE
 
   INTEGER :: err,rank,size
+  INTEGER, dimension(3)  :: periodic
+  ! not periodic
+  data periodic/0, 0, 0/
+
+  mpi_dims = 0
 
   rank=0
   size=1
 
   CALL MPI_INIT(err)
+  CALL MPI_COMM_SIZE(mpi_comm_world,size,err)
 
-  CALL MPI_COMM_RANK(MPI_COMM_WORLD,rank,err)
-  CALL MPI_COMM_SIZE(MPI_COMM_WORLD,size,err)
+  ! Create comm and get coords
+  CALL MPI_DIMS_CREATE(size, 3, mpi_dims, err)
+  CALL MPI_CART_CREATE(mpi_comm_world, 3, mpi_dims, periodic, 1, mpi_cart_comm, err)
+
+  CALL MPI_COMM_RANK(mpi_cart_comm,rank,err)
+  CALL MPI_COMM_SIZE(mpi_cart_comm,size,err)
+  CALL MPI_CART_COORDS(mpi_cart_comm, rank, 3, mpi_coords, err)
 
   parallel%parallel=.TRUE.
   parallel%task=rank
@@ -114,67 +127,38 @@ SUBROUTINE tea_decompose(x_cells,y_cells,z_cells,left,right,bottom,top,back,fron
 
   IMPLICIT NONE
 
-  INTEGER :: x_cells,y_cells,z_cells,left(:),right(:),top(:),bottom(:),back(:),front(:)
+  INTEGER :: x_cells,y_cells,z_cells
+  INTEGER, dimension(1:) :: left,right,top,bottom,back,front
   INTEGER :: c,delta_x,delta_y,delta_z
 
-  REAL(KIND=8) :: surface,volume,best_metric,current_metric
   INTEGER  :: chunk_x,chunk_y,chunk_z,mod_x,mod_y,mod_z
 
-  INTEGER  :: cx,cy,cz,chunk,add_x,add_y,add_z,add_x_prev,add_y_prev,add_z_prev
-  INTEGER  :: div1,j,current_x,current_y,current_z
+  INTEGER  :: err
 
-  ! 3D Decomposition of the mesh
+  ! 1 chunk
+  c = 1
 
-  current_x = 1
-  current_y = 1
-  current_z = number_of_chunks
+  ! Get destinations/sources
+  CALL mpi_cart_shift(mpi_cart_comm, 0, 1,      &
+    chunks(c)%chunk_neighbours(chunk_bottom),   &
+    chunks(c)%chunk_neighbours(chunk_top),      &
+    err)
+  CALL mpi_cart_shift(mpi_cart_comm, 1, 1,      &
+    chunks(c)%chunk_neighbours(chunk_left),     &
+    chunks(c)%chunk_neighbours(chunk_right),    &
+    err)
+  CALL mpi_cart_shift(mpi_cart_comm, 2, 1,      &
+    chunks(c)%chunk_neighbours(chunk_back),     &
+    chunks(c)%chunk_neighbours(chunk_front),    &
+    err)
 
-  ! Initialise metric
-  surface = (((1.0*x_cells)/current_x)*((1.0*y_cells)/current_y)*2) &
-          + (((1.0*x_cells)/current_x)*((1.0*z_cells)/current_z)*2) &
-          + (((1.0*y_cells)/current_y)*((1.0*z_cells)/current_z)*2)
-  volume  = ((1.0*x_cells)/current_x)*((1.0*y_cells)/current_y)*((1.0*z_cells)/current_z)
-  best_metric = surface/volume
-  chunk_x=current_x
-  chunk_y=current_y
-  chunk_z=current_z
+  WHERE (chunks(c)%chunk_neighbours .EQ. mpi_proc_null)
+    chunks(c)%chunk_neighbours = external_face
+  END WHERE
 
-  DO c=1,number_of_chunks
-
-    ! If doesn't evenly divide loop
-    IF(MOD(number_of_chunks,c).NE.0) CYCLE
-
-    current_x=c
-
-    div1 = number_of_chunks/c
-
-    DO j=1,div1
-      IF(MOD(div1,j).NE.0) CYCLE
-      current_y = j
-
-      IF(MOD(number_of_chunks,(c*j)).NE.0) CYCLE
-
-      current_z = number_of_chunks/(c*j)
-
-      surface = (((1.0*x_cells)/current_x)*((1.0*y_cells)/current_y)*2) &
-              + (((1.0*x_cells)/current_x)*((1.0*z_cells)/current_z)*2) &
-              + (((1.0*y_cells)/current_y)*((1.0*z_cells)/current_z)*2)
-      volume  = ((1.0*x_cells)/current_x)*((1.0*y_cells)/current_y)*((1.0*z_cells)/current_z)
-
-      current_metric = surface/volume
-
-      IF(current_metric < best_metric) THEN
-        chunk_x=current_x
-        chunk_y=current_y
-        chunk_z=current_z
-        best_metric=current_metric
-      ENDIF
-
-    ENDDO
-
-  ENDDO
-
-  ! Set up chunk mesh ranges and chunk connectivity
+  chunk_y = mpi_dims(1)
+  chunk_x = mpi_dims(2)
+  chunk_z = mpi_dims(3)
 
   delta_x=x_cells/chunk_x
   delta_y=y_cells/chunk_y
@@ -182,51 +166,39 @@ SUBROUTINE tea_decompose(x_cells,y_cells,z_cells,left,right,bottom,top,back,fron
   mod_x=MOD(x_cells,chunk_x)
   mod_y=MOD(y_cells,chunk_y)
   mod_z=MOD(z_cells,chunk_z)
-  add_x_prev=0
-  add_y_prev=0
-  add_z_prev=0
-  chunk=1
-  DO cz=1,chunk_z
-    DO cy=1,chunk_y
-      DO cx=1,chunk_x
-        add_x=0
-        add_y=0
-        add_z=0
-        IF(cx.LE.mod_x)add_x=1
-        IF(cy.LE.mod_y)add_y=1
-        IF(cz.LE.mod_z)add_z=1
-        IF (chunk .EQ. parallel%task+1) THEN
-          ! Mesh chunks
-          left(1)=(cx-1)*delta_x+1+add_x_prev
-          right(1)=left(1)+delta_x-1+add_x
-          bottom(1)=(cy-1)*delta_y+1+add_y_prev
-          top(1)=bottom(1)+delta_y-1+add_y
-          back(1)=(cz-1)*delta_z+1+add_z_prev
-          front(1)=back(1)+delta_z-1+add_z
-          ! Chunk connectivity
-          chunks(1)%chunk_neighbours(chunk_left)=  chunk-1
-          chunks(1)%chunk_neighbours(chunk_right)= chunk+1
-          chunks(1)%chunk_neighbours(chunk_bottom)=chunk-chunk_x
-          chunks(1)%chunk_neighbours(chunk_top)=   chunk+chunk_x
-          chunks(1)%chunk_neighbours(chunk_back)=  chunk-chunk_x*chunk_y
-          chunks(1)%chunk_neighbours(chunk_front)= chunk+chunk_x*chunk_y
-          IF(cx.EQ.1)chunks(1)%chunk_neighbours(chunk_left)=external_face
-          IF(cx.EQ.chunk_x)chunks(1)%chunk_neighbours(chunk_right)=external_face
-          IF(cy.EQ.1)chunks(1)%chunk_neighbours(chunk_bottom)=external_face
-          IF(cy.EQ.chunk_y)chunks(1)%chunk_neighbours(chunk_top)=external_face
-          IF(cz.EQ.1)chunks(1)%chunk_neighbours(chunk_back)=external_face
-          IF(cz.EQ.chunk_z)chunks(1)%chunk_neighbours(chunk_front)=external_face
-        ENDIF
-        IF(cx.LE.mod_x)add_x_prev=add_x_prev+1
-        chunk=chunk+1
-      ENDDO
-      add_x_prev=0
-      IF(cy.LE.mod_y)add_y_prev=add_y_prev+1
-    ENDDO
-    add_x_prev=0
-    add_y_prev=0
-    IF(cz.LE.mod_z)add_z_prev=add_z_prev+1
-  ENDDO
+
+  left(c) = mpi_coords(2)*delta_x + 1
+  if (mpi_coords(2) .le. mod_x) then
+    left(c) = left(c) + mpi_coords(2)
+  else
+    left(c) = left(c) + mod_x
+  endif
+  right(c) = left(c)+delta_x - 1
+  if (mpi_coords(2) .lt. mod_x) then
+    right(c) = right(c) + 1
+  endif
+
+  bottom(c) = mpi_coords(1)*delta_y + 1
+  if (mpi_coords(1) .le. mod_y) then
+    bottom(c) = bottom(c) + mpi_coords(1)
+  else
+    bottom(c) = bottom(c) + mod_y
+  endif
+  top(c) = bottom(c)+delta_y - 1
+  if (mpi_coords(1) .lt. mod_y) then
+    top(c) = top(c) + 1
+  endif
+
+  back(c) = mpi_coords(3)*delta_z + 1
+  if (mpi_coords(3) .le. mod_z) then
+    back(c) = back(c) + mpi_coords(3)
+  else
+    back(c) = back(c) + mod_z
+  endif
+  front(c) = back(c)+delta_z - 1
+  if (mpi_coords(3) .lt. mod_z) then
+    front(c) = front(c) + 1
+  endif
 
   IF(parallel%boss)THEN
     WRITE(g_out,*)
@@ -241,256 +213,254 @@ SUBROUTINE tea_allocate_buffers(chunk)
   IMPLICIT NONE
 
   INTEGER      :: chunk
-  
+
+  INTEGER      :: bt_size, lr_size, fb_size
+  INTEGER,parameter :: num_buffered=6
+
+  INTEGER           :: allocate_extra_size
+
+  allocate_extra_size = max(2, halo_exchange_depth)
+
+  lr_size = num_buffered*(chunks(chunk)%field%y_max &
+            + 2*allocate_extra_size)*(chunks(chunk)%field%z_max &
+            + 2*allocate_extra_size)*halo_exchange_depth
+  bt_size = num_buffered*(chunks(chunk)%field%x_max &
+            + 2*allocate_extra_size)*(chunks(chunk)%field%z_max &
+            + 2*allocate_extra_size)*halo_exchange_depth
+  fb_size = num_buffered*(chunks(chunk)%field%x_max &
+            + 2*allocate_extra_size)*(chunks(chunk)%field%y_max &
+            + 2*allocate_extra_size)*halo_exchange_depth
+
   ! Unallocated buffers for external boundaries caused issues on some systems so they are now
   !  all allocated
   IF(parallel%task.EQ.chunks(chunk)%task)THEN
-      ALLOCATE(chunks(chunk)%left_snd_buffer(19*2*(chunks(chunk)%field%y_max+5)*(chunks(chunk)%field%z_max+5)))
-      ALLOCATE(chunks(chunk)%left_rcv_buffer(19*2*(chunks(chunk)%field%y_max+5)*(chunks(chunk)%field%z_max+5)))
-      ALLOCATE(chunks(chunk)%right_snd_buffer(19*2*(chunks(chunk)%field%y_max+5)*(chunks(chunk)%field%z_max+5)))
-      ALLOCATE(chunks(chunk)%right_rcv_buffer(19*2*(chunks(chunk)%field%y_max+5)*(chunks(chunk)%field%z_max+5)))
-      ALLOCATE(chunks(chunk)%bottom_snd_buffer(19*2*(chunks(chunk)%field%x_max+5)*(chunks(chunk)%field%z_max+5)))
-      ALLOCATE(chunks(chunk)%bottom_rcv_buffer(19*2*(chunks(chunk)%field%x_max+5)*(chunks(chunk)%field%z_max+5)))
-      ALLOCATE(chunks(chunk)%top_snd_buffer(19*2*(chunks(chunk)%field%x_max+5)*(chunks(chunk)%field%z_max+5)))
-      ALLOCATE(chunks(chunk)%top_rcv_buffer(19*2*(chunks(chunk)%field%x_max+5)*(chunks(chunk)%field%z_max+5)))
-      ALLOCATE(chunks(chunk)%back_snd_buffer(19*2*(chunks(chunk)%field%x_max+5)*(chunks(chunk)%field%y_max+5)))
-      ALLOCATE(chunks(chunk)%back_rcv_buffer(19*2*(chunks(chunk)%field%x_max+5)*(chunks(chunk)%field%y_max+5)))
-      ALLOCATE(chunks(chunk)%front_snd_buffer(19*2*(chunks(chunk)%field%x_max+5)*(chunks(chunk)%field%y_max+5)))
-      ALLOCATE(chunks(chunk)%front_rcv_buffer(19*2*(chunks(chunk)%field%x_max+5)*(chunks(chunk)%field%y_max+5)))
+    !IF(chunks(chunk)%chunk_neighbours(chunk_left).NE.external_face) THEN
+      ALLOCATE(chunks(chunk)%left_snd_buffer(lr_size))
+      ALLOCATE(chunks(chunk)%left_rcv_buffer(lr_size))
+    !ENDIF
+    !IF(chunks(chunk)%chunk_neighbours(chunk_right).NE.external_face) THEN
+      ALLOCATE(chunks(chunk)%right_snd_buffer(lr_size))
+      ALLOCATE(chunks(chunk)%right_rcv_buffer(lr_size))
+    !ENDIF
+    !IF(chunks(chunk)%chunk_neighbours(chunk_bottom).NE.external_face) THEN
+      ALLOCATE(chunks(chunk)%bottom_snd_buffer(bt_size))
+      ALLOCATE(chunks(chunk)%bottom_rcv_buffer(bt_size))
+    !ENDIF
+    !IF(chunks(chunk)%chunk_neighbours(chunk_top).NE.external_face) THEN
+      ALLOCATE(chunks(chunk)%top_snd_buffer(bt_size))
+      ALLOCATE(chunks(chunk)%top_rcv_buffer(bt_size))
+    !ENDIF
+    !IF(chunks(chunk)%chunk_neighbours(chunk_back).NE.external_face) THEN
+      ALLOCATE(chunks(chunk)%back_snd_buffer(fb_size))
+      ALLOCATE(chunks(chunk)%back_rcv_buffer(fb_size))
+    !ENDIF
+    !IF(chunks(chunk)%chunk_neighbours(chunk_front).NE.external_face) THEN
+      ALLOCATE(chunks(chunk)%front_snd_buffer(fb_size))
+      ALLOCATE(chunks(chunk)%front_rcv_buffer(fb_size))
+    !ENDIF
   ENDIF
+
+  chunks(chunk)%left_snd_buffer = 0
+  chunks(chunk)%right_snd_buffer = 0
+  chunks(chunk)%bottom_snd_buffer = 0
+  chunks(chunk)%top_snd_buffer = 0
+  chunks(chunk)%back_snd_buffer = 0
+  chunks(chunk)%front_snd_buffer = 0
+
+  chunks(chunk)%left_rcv_buffer = 0
+  chunks(chunk)%right_rcv_buffer = 0
+  chunks(chunk)%bottom_rcv_buffer = 0
+  chunks(chunk)%top_rcv_buffer = 0
+  chunks(chunk)%back_rcv_buffer = 0
+  chunks(chunk)%front_rcv_buffer = 0
 
 END SUBROUTINE tea_allocate_buffers
 
 SUBROUTINE tea_exchange(fields,depth)
 
-    IMPLICIT NONE
+  IMPLICIT NONE
 
-    INTEGER      :: fields(:),depth, chunk
-    INTEGER      :: left_right_offset(NUM_FIELDS),bottom_top_offset(NUM_FIELDS),back_front_offset(NUM_FIELDS)
-    INTEGER      :: request(4)
-    INTEGER      :: message_count,err
-    INTEGER      :: status(MPI_STATUS_SIZE,4)
-    INTEGER      :: end_pack_index_left_right, end_pack_index_bottom_top,end_pack_index_back_front,field
+    INTEGER      :: fields(NUM_FIELDS),depth, chunk,err,field
+    INTEGER,DIMENSION(NUM_FIELDS)      :: left_right_offset,bottom_top_offset,back_front_offset
+    INTEGER      :: end_pack_index_left_right, end_pack_index_bottom_top,end_pack_index_back_front
+    INTEGER      :: message_count_lr, message_count_ud, message_count_fb
+    INTEGER      :: exchange_size_lr, exchange_size_ud, exchange_size_fb
+    INTEGER, dimension(4)                 :: request_lr, request_ud, request_fb
+    INTEGER, dimension(MPI_STATUS_SIZE,4) :: status_lr, status_ud, status_fb
+    LOGICAL :: test_complete
 
     ! Assuming 1 patch per task, this will be changed
-
-    call flush(g_out)
-
-    request=0
-    message_count=0
-
     chunk = 1
+
+    IF (ALL(chunks(chunk)%chunk_neighbours .eq. external_face)) return
+
+    exchange_size_lr = depth*(chunks(chunk)%field%y_max+2*depth)*(chunks(chunk)%field%z_max+2*depth)
+    exchange_size_ud = depth*(chunks(chunk)%field%x_max+2*depth)*(chunks(chunk)%field%z_max+2*depth)
+    exchange_size_fb = depth*(chunks(chunk)%field%x_max+2*depth)*(chunks(chunk)%field%y_max+2*depth)
+
+    request_lr = 0
+    message_count_lr = 0
+    request_ud = 0
+    message_count_ud = 0
+    request_fb = 0
+    message_count_fb = 0
 
     end_pack_index_left_right=0
     end_pack_index_bottom_top=0
     end_pack_index_back_front=0
-
-    back_front_offset = -1
-    left_right_offset = -1
-    bottom_top_offset = -1
-
+    left_right_offset = 0
+    bottom_top_offset = 0
+    back_front_offset = 0
     DO field=1,NUM_FIELDS
       IF(fields(field).EQ.1) THEN
         left_right_offset(field)=end_pack_index_left_right
         bottom_top_offset(field)=end_pack_index_bottom_top
         back_front_offset(field)=end_pack_index_back_front
-        end_pack_index_left_right=end_pack_index_left_right+depth*(chunks(chunk)%field%y_max+5)*(chunks(chunk)%field%z_max+5)
-        end_pack_index_bottom_top=end_pack_index_bottom_top+depth*(chunks(chunk)%field%x_max+5)*(chunks(chunk)%field%z_max+5)
-        end_pack_index_back_front=end_pack_index_back_front+depth*(chunks(chunk)%field%x_max+5)*(chunks(chunk)%field%y_max+5)
+        end_pack_index_left_right=end_pack_index_left_right + exchange_size_lr
+        end_pack_index_bottom_top=end_pack_index_bottom_top + exchange_size_ud
+        end_pack_index_back_front=end_pack_index_back_front + exchange_size_fb
       ENDIF
     ENDDO
 
     IF(chunks(chunk)%chunk_neighbours(chunk_left).NE.external_face) THEN
       ! do left exchanges
-        CALL tea_pack_left(chunk, fields, depth, left_right_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_LEFT, &
+        chunks(chunk)%left_snd_buffer, left_right_offset)
 
       !send and recv messagse to the left
       CALL tea_send_recv_message_left(chunks(chunk)%left_snd_buffer,                      &
                                          chunks(chunk)%left_rcv_buffer,                      &
                                          chunk,end_pack_index_left_right,                    &
                                          1, 2,                                               &
-                                         request(message_count+1), request(message_count+2))
-      message_count = message_count + 2
+                                         request_lr(message_count_lr+1), request_lr(message_count_lr+2))
+      message_count_lr = message_count_lr + 2
     ENDIF
 
     IF(chunks(chunk)%chunk_neighbours(chunk_right).NE.external_face) THEN
       ! do right exchanges
-        CALL tea_pack_right(chunk, fields, depth, left_right_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_RIGHT, &
+        chunks(chunk)%right_snd_buffer, left_right_offset)
 
       !send message to the right
       CALL tea_send_recv_message_right(chunks(chunk)%right_snd_buffer,                     &
                                           chunks(chunk)%right_rcv_buffer,                     &
                                           chunk,end_pack_index_left_right,                    &
                                           2, 1,                                               &
-                                          request(message_count+1), request(message_count+2))
-      message_count = message_count + 2
+                                          request_lr(message_count_lr+1), request_lr(message_count_lr+2))
+      message_count_lr = message_count_lr + 2
     ENDIF
 
-    !make a call to wait / sync
-    CALL MPI_WAITALL(message_count,request,status,err)
+!    IF (depth .eq. 1) THEN
+!      test_complete = .false.
+!      ! don't have to transfer now
+!      CALL MPI_TESTALL(message_count_lr, request_lr, test_complete, status_lr, err)
+!    ELSE
+      test_complete = .true.
+      !make a call to wait / sync
+      CALL MPI_WAITALL(message_count_lr,request_lr,status_lr,err)
+!    ENDIF
 
-    !unpack in right direction
-    IF(chunks(chunk)%chunk_neighbours(chunk_right).NE.external_face) THEN
-        CALL tea_unpack_right(fields, chunk, depth,                     &
-                                 chunks(chunk)%right_rcv_buffer,           &
-                                 left_right_offset)
+    IF (test_complete .eqv. .true.) THEN
+      !unpack in left direction
+      IF(chunks(chunk)%chunk_neighbours(chunk_left).NE.external_face) THEN
+        CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_LEFT, &
+          chunks(chunk)%left_rcv_buffer, left_right_offset)
+      ENDIF
+
+      !unpack in right direction
+      IF(chunks(chunk)%chunk_neighbours(chunk_right).NE.external_face) THEN
+        CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_RIGHT, &
+          chunks(chunk)%right_rcv_buffer, left_right_offset)
+      ENDIF
     ENDIF
-
-    !unpack in left direction
-    IF(chunks(chunk)%chunk_neighbours(chunk_left).NE.external_face) THEN
-      else
-        CALL tea_unpack_left(fields, chunk, depth,                      &
-                                chunks(chunk)%left_rcv_buffer,             &
-                                left_right_offset)
-    ENDIF
-
-    message_count = 0
-    request = 0
 
     IF(chunks(chunk)%chunk_neighbours(chunk_bottom).NE.external_face) THEN
       ! do bottom exchanges
-        CALL tea_pack_bottom(chunk, fields, depth, bottom_top_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_BOTTOM, &
+        chunks(chunk)%bottom_snd_buffer, bottom_top_offset)
 
       !send message downwards
       CALL tea_send_recv_message_bottom(chunks(chunk)%bottom_snd_buffer,                     &
                                            chunks(chunk)%bottom_rcv_buffer,                     &
                                            chunk,end_pack_index_bottom_top,                     &
                                            3, 4,                                                &
-                                           request(message_count+1), request(message_count+2))
-      message_count = message_count + 2
+                                           request_ud(message_count_ud+1), request_ud(message_count_ud+2))
+      message_count_ud = message_count_ud + 2
     ENDIF
 
     IF(chunks(chunk)%chunk_neighbours(chunk_top).NE.external_face) THEN
       ! do top exchanges
-        CALL tea_pack_top(chunk, fields, depth, bottom_top_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_TOP, &
+        chunks(chunk)%top_snd_buffer, bottom_top_offset)
 
       !send message upwards
       CALL tea_send_recv_message_top(chunks(chunk)%top_snd_buffer,                           &
                                         chunks(chunk)%top_rcv_buffer,                           &
                                         chunk,end_pack_index_bottom_top,                        &
                                         4, 3,                                                   &
-                                        request(message_count+1), request(message_count+2))
-      message_count = message_count + 2
+                                        request_ud(message_count_ud+1), request_ud(message_count_ud+2))
+      message_count_ud = message_count_ud + 2
     ENDIF
 
     !need to make a call to wait / sync
-    CALL MPI_WAITALL(message_count,request,status,err)
+    CALL MPI_WAITALL(message_count_ud,request_ud,status_ud,err)
 
     !unpack in top direction
     IF( chunks(chunk)%chunk_neighbours(chunk_top).NE.external_face ) THEN
-        CALL tea_unpack_top(fields, chunk, depth,                       &
-                               chunks(chunk)%top_rcv_buffer,               &
-                               bottom_top_offset)
+      CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_TOP, &
+        chunks(chunk)%top_rcv_buffer, bottom_top_offset)
     ENDIF
 
     !unpack in bottom direction
     IF(chunks(chunk)%chunk_neighbours(chunk_bottom).NE.external_face) THEN
-        CALL tea_unpack_bottom(fields, chunk, depth,                   &
-                                 chunks(chunk)%bottom_rcv_buffer,         &
-                                 bottom_top_offset)
+      CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_BOTTOM, &
+        chunks(chunk)%bottom_rcv_buffer, bottom_top_offset)
     ENDIF
-
-    message_count = 0
-    request = 0
 
     IF(chunks(chunk)%chunk_neighbours(chunk_back).NE.external_face) THEN
       ! do back exchanges
-        CALL tea_pack_back(chunk, fields, depth, back_front_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_BACK, &
+        chunks(chunk)%back_snd_buffer, back_front_offset)
 
       !send message downwards
       CALL tea_send_recv_message_back(chunks(chunk)%back_snd_buffer,                        &
                                            chunks(chunk)%back_rcv_buffer,                      &
                                            chunk,end_pack_index_back_front,                    &
                                            5, 6,                                               &
-                                           request(message_count+1), request(message_count+2))
-      message_count = message_count + 2
+                                           request_fb(message_count_fb+1), request_fb(message_count_fb+2))
+      message_count_fb = message_count_fb + 2
     ENDIF
 
     IF(chunks(chunk)%chunk_neighbours(chunk_front).NE.external_face) THEN
       ! do front exchanges
-        CALL tea_pack_front(chunk, fields, depth, back_front_offset)
+      CALL tea_pack_buffers(chunk, fields, depth, CHUNK_FRONT, &
+        chunks(chunk)%front_snd_buffer, back_front_offset)
 
       !send message upwards
       CALL tea_send_recv_message_front(chunks(chunk)%front_snd_buffer,                       &
                                         chunks(chunk)%front_rcv_buffer,                         &
                                         chunk,end_pack_index_back_front,                        &
                                         6, 5,                                                   &
-                                        request(message_count+1), request(message_count+2))
-      message_count = message_count + 2
+                                        request_fb(message_count_fb+1), request_fb(message_count_fb+2))
+      message_count_fb = message_count_fb + 2
     ENDIF
 
     !need to make a call to wait / sync
-    CALL MPI_WAITALL(message_count,request,status,err)
+    CALL MPI_WAITALL(message_count_fb,request_fb,status_fb,err)
 
     !unpack in front direction
     IF( chunks(chunk)%chunk_neighbours(chunk_front).NE.external_face ) THEN
-        CALL tea_unpack_front(fields, chunk, depth,                       &
-                               chunks(chunk)%front_rcv_buffer,               &
-                               back_front_offset)
+      CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_FRONT, &
+        chunks(chunk)%front_rcv_buffer, back_front_offset)
     ENDIF
 
     !unpack in back direction
     IF(chunks(chunk)%chunk_neighbours(chunk_back).NE.external_face) THEN
-        CALL tea_unpack_back(fields, chunk, depth,                   &
-                                 chunks(chunk)%back_rcv_buffer,         &
-                                 back_front_offset)
+      CALL tea_unpack_buffers(chunk, fields, depth, CHUNK_BACK, &
+        chunks(chunk)%back_rcv_buffer, back_front_offset)
     ENDIF
 
 END SUBROUTINE tea_exchange
-
-SUBROUTINE tea_pack_left(chunk, fields, depth, left_right_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER      :: fields(:),depth, chunk
-  INTEGER      :: left_right_offset(:)
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_pack_message_left(chunks(chunk)%field%x_min,                    &
-                                    chunks(chunk)%field%x_max,                    &
-                                    chunks(chunk)%field%y_min,                    &
-                                    chunks(chunk)%field%y_max,                    &
-                                    chunks(chunk)%field%z_min,                    &
-                                    chunks(chunk)%field%z_max,                    &
-                                    chunks(chunk)%field%density,                 &
-                                    chunks(chunk)%left_snd_buffer,                &
-                                    CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
-                                    depth, CELL_DATA,                             &
-                                    left_right_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_pack_message_left(chunks(chunk)%field%x_min,                    &
-                                    chunks(chunk)%field%x_max,                    &
-                                    chunks(chunk)%field%y_min,                    &
-                                    chunks(chunk)%field%y_max,                    &
-                                    chunks(chunk)%field%z_min,                    &
-                                    chunks(chunk)%field%z_max,                    &
-                                    chunks(chunk)%field%energy0,                  &
-                                    chunks(chunk)%left_snd_buffer,                &
-                                    CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
-                                    depth, CELL_DATA,                             &
-                                    left_right_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_pack_message_left(chunks(chunk)%field%x_min,                    &
-                                    chunks(chunk)%field%x_max,                    &
-                                    chunks(chunk)%field%y_min,                    &
-                                    chunks(chunk)%field%y_max,                    &
-                                    chunks(chunk)%field%z_min,                    &
-                                    chunks(chunk)%field%z_max,                    &
-                                    chunks(chunk)%field%energy1,                  &
-                                    chunks(chunk)%left_snd_buffer,                &
-                                    CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
-                                    depth, CELL_DATA,                             &
-                                    left_right_offset(FIELD_ENERGY1))
-    
-  ENDIF
-
-END SUBROUTINE tea_pack_left
 
 SUBROUTINE tea_send_recv_message_left(left_snd_buffer, left_rcv_buffer,      &
                                          chunk, total_size,                     &
@@ -503,126 +473,15 @@ SUBROUTINE tea_send_recv_message_left(left_snd_buffer, left_rcv_buffer,      &
   INTEGER         :: total_size, tag_send, tag_recv, err
   INTEGER         :: req_send, req_recv
 
-  left_task =chunks(chunk)%chunk_neighbours(chunk_left) - 1
+  left_task =chunks(chunk)%chunk_neighbours(chunk_left)
 
   CALL MPI_ISEND(left_snd_buffer,total_size,MPI_DOUBLE_PRECISION,left_task,tag_send &
-                ,MPI_COMM_WORLD,req_send,err)
+                ,mpi_cart_comm,req_send,err)
 
   CALL MPI_IRECV(left_rcv_buffer,total_size,MPI_DOUBLE_PRECISION,left_task,tag_recv &
-                ,MPI_COMM_WORLD,req_recv,err)
+                ,mpi_cart_comm,req_recv,err)
 
 END SUBROUTINE tea_send_recv_message_left
-
-SUBROUTINE tea_unpack_left(fields, chunk, depth,                         &
-                              left_rcv_buffer,                              &
-                              left_right_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER         :: fields(:), chunk, depth
-  INTEGER         :: left_right_offset(:)
-  REAL(KIND=8)    :: left_rcv_buffer(:)
-
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_unpack_message_left(chunks(chunk)%field%x_min,                    &
-                                      chunks(chunk)%field%x_max,                    &
-                                      chunks(chunk)%field%y_min,                    &
-                                      chunks(chunk)%field%y_max,                    &
-                                      chunks(chunk)%field%z_min,                    &
-                                      chunks(chunk)%field%z_max,                    &
-                                      chunks(chunk)%field%density,                 &
-                                      chunks(chunk)%left_rcv_buffer,                &
-                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
-                                      depth, CELL_DATA,                             &
-                                      left_right_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_unpack_message_left(chunks(chunk)%field%x_min,                    &
-                                      chunks(chunk)%field%x_max,                    &
-                                      chunks(chunk)%field%y_min,                    &
-                                      chunks(chunk)%field%y_max,                    &
-                                      chunks(chunk)%field%z_min,                    &
-                                      chunks(chunk)%field%z_max,                    &
-                                      chunks(chunk)%field%energy0,                  &
-                                      chunks(chunk)%left_rcv_buffer,                &
-                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
-                                      depth, CELL_DATA,                             &
-                                      left_right_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_unpack_message_left(chunks(chunk)%field%x_min,                    &
-                                      chunks(chunk)%field%x_max,                    &
-                                      chunks(chunk)%field%y_min,                    &
-                                      chunks(chunk)%field%y_max,                    &
-                                      chunks(chunk)%field%z_min,                    &
-                                      chunks(chunk)%field%z_max,                    &
-                                      chunks(chunk)%field%energy1,                  &
-                                      chunks(chunk)%left_rcv_buffer,                &
-                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA, &
-                                      depth, CELL_DATA,                             &
-                                      left_right_offset(FIELD_ENERGY1))
-    
-  ENDIF
-
-END SUBROUTINE tea_unpack_left
-
-SUBROUTINE tea_pack_right(chunk, fields, depth, left_right_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER        :: chunk, fields(:), depth, tot_packr, left_right_offset(:)
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_pack_message_right(chunks(chunk)%field%x_min,                    &
-                                     chunks(chunk)%field%x_max,                    &
-                                     chunks(chunk)%field%y_min,                    &
-                                     chunks(chunk)%field%y_max,                    &
-                                     chunks(chunk)%field%z_min,                    &
-                                     chunks(chunk)%field%z_max,                    &
-                                     chunks(chunk)%field%density,                 &
-                                     chunks(chunk)%right_snd_buffer,               &
-                                     CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                     depth, CELL_DATA,                             &
-                                     left_right_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_pack_message_right(chunks(chunk)%field%x_min,                    &
-                                     chunks(chunk)%field%x_max,                    &
-                                     chunks(chunk)%field%y_min,                    &
-                                     chunks(chunk)%field%y_max,                    &
-                                     chunks(chunk)%field%z_min,                    &
-                                     chunks(chunk)%field%z_max,                    &
-                                     chunks(chunk)%field%energy0,                  &
-                                     chunks(chunk)%right_snd_buffer,               &
-                                     CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                     depth, CELL_DATA,                             &
-                                     left_right_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_pack_message_right(chunks(chunk)%field%x_min,                    &
-                                     chunks(chunk)%field%x_max,                    &
-                                     chunks(chunk)%field%y_min,                    &
-                                     chunks(chunk)%field%y_max,                    &
-                                     chunks(chunk)%field%z_min,                    &
-                                     chunks(chunk)%field%z_max,                    &
-                                     chunks(chunk)%field%energy1,                  &
-                                     chunks(chunk)%right_snd_buffer,               &
-                                     CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                     depth, CELL_DATA,                             &
-                                     left_right_offset(FIELD_ENERGY1))
-    
-  ENDIF
-
-END SUBROUTINE tea_pack_right
 
 SUBROUTINE tea_send_recv_message_right(right_snd_buffer, right_rcv_buffer,   &
                                           chunk, total_size,                    &
@@ -637,122 +496,15 @@ SUBROUTINE tea_send_recv_message_right(right_snd_buffer, right_rcv_buffer,   &
   INTEGER      :: total_size, tag_send, tag_recv, err
   INTEGER      :: req_send, req_recv
 
-  right_task=chunks(chunk)%chunk_neighbours(chunk_right) - 1
+  right_task=chunks(chunk)%chunk_neighbours(chunk_right)
 
   CALL MPI_ISEND(right_snd_buffer,total_size,MPI_DOUBLE_PRECISION,right_task,tag_send, &
-                 MPI_COMM_WORLD,req_send,err)
+                 mpi_cart_comm,req_send,err)
 
   CALL MPI_IRECV(right_rcv_buffer,total_size,MPI_DOUBLE_PRECISION,right_task,tag_recv, &
-                 MPI_COMM_WORLD,req_recv,err)
+                 mpi_cart_comm,req_recv,err)
 
 END SUBROUTINE tea_send_recv_message_right
-
-SUBROUTINE tea_unpack_right(fields, chunk, depth,                          &
-                               right_rcv_buffer,                              &
-                               left_right_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER         :: fields(:), chunk, total_in_right_buff, depth, left_right_offset(:)
-  REAL(KIND=8)    :: right_rcv_buffer(:)
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_unpack_message_right(chunks(chunk)%field%x_min,                    &
-                                       chunks(chunk)%field%x_max,                    &
-                                       chunks(chunk)%field%y_min,                    &
-                                       chunks(chunk)%field%y_max,                    &
-                                       chunks(chunk)%field%z_min,                    &
-                                       chunks(chunk)%field%z_max,                    &
-                                       chunks(chunk)%field%density,                 &
-                                       chunks(chunk)%right_rcv_buffer,               &
-                                       CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                       depth, CELL_DATA,                             &
-                                       left_right_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_unpack_message_right(chunks(chunk)%field%x_min,                    &
-                                       chunks(chunk)%field%x_max,                    &
-                                       chunks(chunk)%field%y_min,                    &
-                                       chunks(chunk)%field%y_max,                    &
-                                       chunks(chunk)%field%z_min,                    &
-                                       chunks(chunk)%field%z_max,                    &
-                                       chunks(chunk)%field%energy0,                  &
-                                       chunks(chunk)%right_rcv_buffer,               &
-                                       CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                       depth, CELL_DATA,                             &
-                                       left_right_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_unpack_message_right(chunks(chunk)%field%x_min,                    &
-                                       chunks(chunk)%field%x_max,                    &
-                                       chunks(chunk)%field%y_min,                    &
-                                       chunks(chunk)%field%y_max,                    &
-                                       chunks(chunk)%field%z_min,                    &
-                                       chunks(chunk)%field%z_max,                    &
-                                       chunks(chunk)%field%energy1,                  &
-                                       chunks(chunk)%right_rcv_buffer,               &
-                                       CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                       depth, CELL_DATA,                             &
-                                       left_right_offset(FIELD_ENERGY1))
-    
-  ENDIF
-END SUBROUTINE tea_unpack_right
-
-SUBROUTINE tea_pack_top(chunk, fields, depth, bottom_top_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER        :: chunk, fields(:), depth, bottom_top_offset(:)
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_pack_message_top(chunks(chunk)%field%x_min,                    &
-                                   chunks(chunk)%field%x_max,                    &
-                                   chunks(chunk)%field%y_min,                    &
-                                   chunks(chunk)%field%y_max,                    &
-                                   chunks(chunk)%field%z_min,                    &
-                                   chunks(chunk)%field%z_max,                    &
-                                   chunks(chunk)%field%density,                 &
-                                   chunks(chunk)%top_snd_buffer,                 &
-                                   CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                   depth, CELL_DATA,                             &
-                                   bottom_top_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_pack_message_top(chunks(chunk)%field%x_min,                    &
-                                   chunks(chunk)%field%x_max,                    &
-                                   chunks(chunk)%field%y_min,                    &
-                                   chunks(chunk)%field%y_max,                    &
-                                   chunks(chunk)%field%z_min,                    &
-                                   chunks(chunk)%field%z_max,                    &
-                                   chunks(chunk)%field%energy0,                  &
-                                   chunks(chunk)%top_snd_buffer,                 &
-                                   CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                   depth, CELL_DATA,                             &
-                                   bottom_top_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_pack_message_top(chunks(chunk)%field%x_min,                    &
-                                   chunks(chunk)%field%x_max,                    &
-                                   chunks(chunk)%field%y_min,                    &
-                                   chunks(chunk)%field%y_max,                    &
-                                   chunks(chunk)%field%z_min,                    &
-                                   chunks(chunk)%field%z_max,                    &
-                                   chunks(chunk)%field%energy1,                  &
-                                   chunks(chunk)%top_snd_buffer,                 &
-                                   CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                   depth, CELL_DATA,                             &
-                                   bottom_top_offset(FIELD_ENERGY1))
-    
-  ENDIF
-END SUBROUTINE tea_pack_top
 
 SUBROUTINE tea_send_recv_message_top(top_snd_buffer, top_rcv_buffer,     &
                                         chunk, total_size,                  &
@@ -767,123 +519,15 @@ SUBROUTINE tea_send_recv_message_top(top_snd_buffer, top_rcv_buffer,     &
     INTEGER      :: total_size, tag_send, tag_recv, err
     INTEGER      :: req_send, req_recv
 
-    top_task=chunks(chunk)%chunk_neighbours(chunk_top) - 1
+    top_task=chunks(chunk)%chunk_neighbours(chunk_top)
 
     CALL MPI_ISEND(top_snd_buffer,total_size,MPI_DOUBLE_PRECISION,top_task,tag_send, &
-                   MPI_COMM_WORLD,req_send,err)
+                   mpi_cart_comm,req_send,err)
 
     CALL MPI_IRECV(top_rcv_buffer,total_size,MPI_DOUBLE_PRECISION,top_task,tag_recv, &
-                   MPI_COMM_WORLD,req_recv,err)
+                   mpi_cart_comm,req_recv,err)
 
 END SUBROUTINE tea_send_recv_message_top
-
-SUBROUTINE tea_unpack_top(fields, chunk, depth,                        &
-                             top_rcv_buffer,                              &
-                             bottom_top_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER         :: fields(:), chunk, total_in_top_buff, depth, bottom_top_offset(:)
-  REAL(KIND=8)    :: top_rcv_buffer(:)
-
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_unpack_message_top(chunks(chunk)%field%x_min,                    &
-                                     chunks(chunk)%field%x_max,                    &
-                                     chunks(chunk)%field%y_min,                    &
-                                     chunks(chunk)%field%y_max,                    &
-                                     chunks(chunk)%field%z_min,                    &
-                                     chunks(chunk)%field%z_max,                    &
-                                     chunks(chunk)%field%density,                 &
-                                     chunks(chunk)%top_rcv_buffer,                 &
-                                     CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                     depth, CELL_DATA,                             &
-                                     bottom_top_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_unpack_message_top(chunks(chunk)%field%x_min,                    &
-                                     chunks(chunk)%field%x_max,                    &
-                                     chunks(chunk)%field%y_min,                    &
-                                     chunks(chunk)%field%y_max,                    &
-                                     chunks(chunk)%field%z_min,                    &
-                                     chunks(chunk)%field%z_max,                    &
-                                     chunks(chunk)%field%energy0,                  &
-                                     chunks(chunk)%top_rcv_buffer,                 &
-                                     CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                     depth, CELL_DATA,                             &
-                                     bottom_top_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_unpack_message_top(chunks(chunk)%field%x_min,                    &
-                                     chunks(chunk)%field%x_max,                    &
-                                     chunks(chunk)%field%y_min,                    &
-                                     chunks(chunk)%field%y_max,                    &
-                                     chunks(chunk)%field%z_min,                    &
-                                     chunks(chunk)%field%z_max,                    &
-                                     chunks(chunk)%field%energy1,                  &
-                                     chunks(chunk)%top_rcv_buffer,                 &
-                                     CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                     depth, CELL_DATA,                             &
-                                     bottom_top_offset(FIELD_ENERGY1))
-    
-  ENDIF
-END SUBROUTINE tea_unpack_top
-
-SUBROUTINE tea_pack_bottom(chunk, fields, depth, bottom_top_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER        :: chunk, fields(:), depth, tot_packb, bottom_top_offset(:)
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_pack_message_bottom(chunks(chunk)%field%x_min,                    &
-                                      chunks(chunk)%field%x_max,                    &
-                                      chunks(chunk)%field%y_min,                    &
-                                      chunks(chunk)%field%y_max,                    &
-                                      chunks(chunk)%field%z_min,                    &
-                                      chunks(chunk)%field%z_max,                    &
-                                      chunks(chunk)%field%density,                 &
-                                      chunks(chunk)%bottom_snd_buffer,              &
-                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                      depth, CELL_DATA,                             &
-                                      bottom_top_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_pack_message_bottom(chunks(chunk)%field%x_min,                    &
-                                      chunks(chunk)%field%x_max,                    &
-                                      chunks(chunk)%field%y_min,                    &
-                                      chunks(chunk)%field%y_max,                    &
-                                      chunks(chunk)%field%z_min,                    &
-                                      chunks(chunk)%field%z_max,                    &
-                                      chunks(chunk)%field%energy0,                  &
-                                      chunks(chunk)%bottom_snd_buffer,              &
-                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                      depth, CELL_DATA,                             &
-                                      bottom_top_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_pack_message_bottom(chunks(chunk)%field%x_min,                    &
-                                      chunks(chunk)%field%x_max,                    &
-                                      chunks(chunk)%field%y_min,                    &
-                                      chunks(chunk)%field%y_max,                    &
-                                      chunks(chunk)%field%z_min,                    &
-                                      chunks(chunk)%field%z_max,                    &
-                                      chunks(chunk)%field%energy1,                  &
-                                      chunks(chunk)%bottom_snd_buffer,              &
-                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                      depth, CELL_DATA,                             &
-                                      bottom_top_offset(FIELD_ENERGY1))
-    
-  ENDIF
-END SUBROUTINE tea_pack_bottom
 
 SUBROUTINE tea_send_recv_message_bottom(bottom_snd_buffer, bottom_rcv_buffer,        &
                                            chunk, total_size,                           &
@@ -898,122 +542,15 @@ SUBROUTINE tea_send_recv_message_bottom(bottom_snd_buffer, bottom_rcv_buffer,   
   INTEGER      :: total_size, tag_send, tag_recv, err
   INTEGER      :: req_send, req_recv
 
-  bottom_task=chunks(chunk)%chunk_neighbours(chunk_bottom) - 1
+  bottom_task=chunks(chunk)%chunk_neighbours(chunk_bottom)
 
   CALL MPI_ISEND(bottom_snd_buffer,total_size,MPI_DOUBLE_PRECISION,bottom_task,tag_send &
-                ,MPI_COMM_WORLD,req_send,err)
+                ,mpi_cart_comm,req_send,err)
 
   CALL MPI_IRECV(bottom_rcv_buffer,total_size,MPI_DOUBLE_PRECISION,bottom_task,tag_recv &
-                ,MPI_COMM_WORLD,req_recv,err)
+                ,mpi_cart_comm,req_recv,err)
 
 END SUBROUTINE tea_send_recv_message_bottom
-
-SUBROUTINE tea_unpack_bottom(fields, chunk, depth,                        &
-                             bottom_rcv_buffer,                              &
-                             bottom_top_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER         :: fields(:), chunk, depth, bottom_top_offset(:)
-  REAL(KIND=8)    :: bottom_rcv_buffer(:)
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_unpack_message_bottom(chunks(chunk)%field%x_min,                    &
-                                        chunks(chunk)%field%x_max,                    &
-                                        chunks(chunk)%field%y_min,                    &
-                                        chunks(chunk)%field%y_max,                    &
-                                        chunks(chunk)%field%z_min,                    &
-                                        chunks(chunk)%field%z_max,                    &
-                                        chunks(chunk)%field%density,                 &
-                                        chunks(chunk)%bottom_rcv_buffer,              &
-                                        CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                        depth, CELL_DATA,                             &
-                                        bottom_top_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_unpack_message_bottom(chunks(chunk)%field%x_min,                    &
-                                        chunks(chunk)%field%x_max,                    &
-                                        chunks(chunk)%field%y_min,                    &
-                                        chunks(chunk)%field%y_max,                    &
-                                        chunks(chunk)%field%z_min,                    &
-                                        chunks(chunk)%field%z_max,                    &
-                                        chunks(chunk)%field%energy0,                  &
-                                        chunks(chunk)%bottom_rcv_buffer,              &
-                                        CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                        depth, CELL_DATA,                             &
-                                        bottom_top_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_unpack_message_bottom(chunks(chunk)%field%x_min,                    &
-                                        chunks(chunk)%field%x_max,                    &
-                                        chunks(chunk)%field%y_min,                    &
-                                        chunks(chunk)%field%y_max,                    &
-                                        chunks(chunk)%field%z_min,                    &
-                                        chunks(chunk)%field%z_max,                    &
-                                        chunks(chunk)%field%energy1,                  &
-                                        chunks(chunk)%bottom_rcv_buffer,              &
-                                        CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                        depth, CELL_DATA,                             &
-                                        bottom_top_offset(FIELD_ENERGY1))
-    
-  ENDIF
-END SUBROUTINE tea_unpack_bottom
-
-SUBROUTINE tea_pack_back(chunk, fields, depth, back_front_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER        :: chunk, fields(:), depth, back_front_offset(:)
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_pack_message_back(chunks(chunk)%field%x_min,                    &
-                                    chunks(chunk)%field%x_max,                    &
-                                    chunks(chunk)%field%y_min,                    &
-                                    chunks(chunk)%field%y_max,                    &
-                                    chunks(chunk)%field%z_min,                    &
-                                    chunks(chunk)%field%z_max,                    &
-                                    chunks(chunk)%field%density,                 &
-                                    chunks(chunk)%back_snd_buffer,                &
-                                    CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                    depth, CELL_DATA,                             &
-                                    back_front_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_pack_message_back(chunks(chunk)%field%x_min,                    &
-                                    chunks(chunk)%field%x_max,                    &
-                                    chunks(chunk)%field%y_min,                    &
-                                    chunks(chunk)%field%y_max,                    &
-                                    chunks(chunk)%field%z_min,                    &
-                                    chunks(chunk)%field%z_max,                    &
-                                    chunks(chunk)%field%energy0,                  &
-                                    chunks(chunk)%back_snd_buffer,                &
-                                    CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                    depth, CELL_DATA,                             &
-                                    back_front_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_pack_message_back(chunks(chunk)%field%x_min,                    &
-                                    chunks(chunk)%field%x_max,                    &
-                                    chunks(chunk)%field%y_min,                    &
-                                    chunks(chunk)%field%y_max,                    &
-                                    chunks(chunk)%field%z_min,                    &
-                                    chunks(chunk)%field%z_max,                    &
-                                    chunks(chunk)%field%energy1,                  &
-                                    chunks(chunk)%back_snd_buffer,                &
-                                    CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                    depth, CELL_DATA,                             &
-                                    back_front_offset(FIELD_ENERGY1))
-    
-  ENDIF
-END SUBROUTINE tea_pack_back
 
 SUBROUTINE tea_send_recv_message_back(back_snd_buffer, back_rcv_buffer,     &
                                          chunk, total_size,                  &
@@ -1028,122 +565,15 @@ SUBROUTINE tea_send_recv_message_back(back_snd_buffer, back_rcv_buffer,     &
   INTEGER      :: total_size, tag_send, tag_recv, err
   INTEGER      :: req_send, req_recv
 
-  back_task=chunks(chunk)%chunk_neighbours(chunk_back)-1
+  back_task=chunks(chunk)%chunk_neighbours(chunk_back)
 
   CALL MPI_ISEND(back_snd_buffer,total_size,MPI_DOUBLE_PRECISION,back_task,tag_send, &
-                 MPI_COMM_WORLD,req_send,err)
+                 mpi_cart_comm,req_send,err)
 
   CALL MPI_IRECV(back_rcv_buffer,total_size,MPI_DOUBLE_PRECISION,back_task,tag_recv, &
-                 MPI_COMM_WORLD,req_recv,err)
+                 mpi_cart_comm,req_recv,err)
 
 END SUBROUTINE tea_send_recv_message_back
-
-SUBROUTINE tea_unpack_back(fields, chunk, depth,                        &
-                              back_rcv_buffer,                             &
-                              back_front_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER         :: fields(:), chunk, depth, back_front_offset(:)
-  REAL(KIND=8)    :: back_rcv_buffer(:)
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_unpack_message_back(chunks(chunk)%field%x_min,                    &
-                                      chunks(chunk)%field%x_max,                    &
-                                      chunks(chunk)%field%y_min,                    &
-                                      chunks(chunk)%field%y_max,                    &
-                                      chunks(chunk)%field%z_min,                    &
-                                      chunks(chunk)%field%z_max,                    &
-                                      chunks(chunk)%field%density,                 &
-                                      chunks(chunk)%back_rcv_buffer,                &
-                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                      depth, CELL_DATA,                             &
-                                      back_front_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_unpack_message_back(chunks(chunk)%field%x_min,                    &
-                                      chunks(chunk)%field%x_max,                    &
-                                      chunks(chunk)%field%y_min,                    &
-                                      chunks(chunk)%field%y_max,                    &
-                                      chunks(chunk)%field%z_min,                    &
-                                      chunks(chunk)%field%z_max,                    &
-                                      chunks(chunk)%field%energy0,                  &
-                                      chunks(chunk)%back_rcv_buffer,                &
-                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                      depth, CELL_DATA,                             &
-                                      back_front_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_unpack_message_back(chunks(chunk)%field%x_min,                    &
-                                      chunks(chunk)%field%x_max,                    &
-                                      chunks(chunk)%field%y_min,                    &
-                                      chunks(chunk)%field%y_max,                    &
-                                      chunks(chunk)%field%z_min,                    &
-                                      chunks(chunk)%field%z_max,                    &
-                                      chunks(chunk)%field%energy1,                  &
-                                      chunks(chunk)%back_rcv_buffer,                &
-                                      CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                      depth, CELL_DATA,                             &
-                                      back_front_offset(FIELD_ENERGY1))
-    
-  ENDIF
-END SUBROUTINE tea_unpack_back
-
-SUBROUTINE tea_pack_front(chunk, fields, depth, back_front_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER        :: chunk, fields(:), depth, tot_packb, back_front_offset(:)
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_pack_message_front(chunks(chunk)%field%x_min,                    &
-                                     chunks(chunk)%field%x_max,                    &
-                                     chunks(chunk)%field%y_min,                    &
-                                     chunks(chunk)%field%y_max,                    &
-                                     chunks(chunk)%field%z_min,                    &
-                                     chunks(chunk)%field%z_max,                    &
-                                     chunks(chunk)%field%density,                 &
-                                     chunks(chunk)%front_snd_buffer,               &
-                                     CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                     depth, CELL_DATA,                             &
-                                     back_front_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_pack_message_front(chunks(chunk)%field%x_min,                    &
-                                     chunks(chunk)%field%x_max,                    &
-                                     chunks(chunk)%field%y_min,                    &
-                                     chunks(chunk)%field%y_max,                    &
-                                     chunks(chunk)%field%z_min,                    &
-                                     chunks(chunk)%field%z_max,                    &
-                                     chunks(chunk)%field%energy0,                  &
-                                     chunks(chunk)%front_snd_buffer,               &
-                                     CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                     depth, CELL_DATA,                             &
-                                     back_front_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_pack_message_front(chunks(chunk)%field%x_min,                    &
-                                     chunks(chunk)%field%x_max,                    &
-                                     chunks(chunk)%field%y_min,                    &
-                                     chunks(chunk)%field%y_max,                    &
-                                     chunks(chunk)%field%z_min,                    &
-                                     chunks(chunk)%field%z_max,                    &
-                                     chunks(chunk)%field%energy1,                  &
-                                     chunks(chunk)%front_snd_buffer,               &
-                                     CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                     depth, CELL_DATA,                             &
-                                     back_front_offset(FIELD_ENERGY1))
-    
-  ENDIF
-END SUBROUTINE tea_pack_front
 
 SUBROUTINE tea_send_recv_message_front(front_snd_buffer, front_rcv_buffer,        &
                                           chunk, total_size,                         &
@@ -1158,71 +588,15 @@ SUBROUTINE tea_send_recv_message_front(front_snd_buffer, front_rcv_buffer,      
   INTEGER      :: total_size, tag_send, tag_recv, err
   INTEGER      :: req_send, req_recv
 
-  front_task=chunks(chunk)%chunk_neighbours(chunk_front)-1
+  front_task=chunks(chunk)%chunk_neighbours(chunk_front)
 
   CALL MPI_ISEND(front_snd_buffer,total_size,MPI_DOUBLE_PRECISION,front_task,tag_send &
-                ,MPI_COMM_WORLD,req_send,err)
+                ,mpi_cart_comm,req_send,err)
 
   CALL MPI_IRECV(front_rcv_buffer,total_size,MPI_DOUBLE_PRECISION,front_task,tag_recv &
-                ,MPI_COMM_WORLD,req_recv,err)
+                ,mpi_cart_comm,req_recv,err)
 
 END SUBROUTINE tea_send_recv_message_front
-
-SUBROUTINE tea_unpack_front(fields, chunk, depth,                        &
-                               front_rcv_buffer,                            &
-                               back_front_offset)
-
-  USE pack_kernel_module
-
-  IMPLICIT NONE
-
-  INTEGER         :: fields(:), chunk, depth, back_front_offset(:)
-  REAL(KIND=8)    :: front_rcv_buffer(:)
-
-  IF(fields(FIELD_DENSITY).EQ.1) THEN
-      CALL tea_unpack_message_front(chunks(chunk)%field%x_min,                    &
-                                       chunks(chunk)%field%x_max,                    &
-                                       chunks(chunk)%field%y_min,                    &
-                                       chunks(chunk)%field%y_max,                    &
-                                       chunks(chunk)%field%z_min,                    &
-                                       chunks(chunk)%field%z_max,                    &
-                                       chunks(chunk)%field%density,                 &
-                                       chunks(chunk)%front_rcv_buffer,               &
-                                       CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                       depth, CELL_DATA,                             &
-                                       back_front_offset(FIELD_DENSITY))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY0).EQ.1) THEN
-      CALL tea_unpack_message_front(chunks(chunk)%field%x_min,                    &
-                                       chunks(chunk)%field%x_max,                    &
-                                       chunks(chunk)%field%y_min,                    &
-                                       chunks(chunk)%field%y_max,                    &
-                                       chunks(chunk)%field%z_min,                    &
-                                       chunks(chunk)%field%z_max,                    &
-                                       chunks(chunk)%field%energy0,                  &
-                                       chunks(chunk)%front_rcv_buffer,               &
-                                       CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                       depth, CELL_DATA,                             &
-                                       back_front_offset(FIELD_ENERGY0))
-    
-  ENDIF
-  IF(fields(FIELD_ENERGY1).EQ.1) THEN
-      CALL tea_unpack_message_front(chunks(chunk)%field%x_min,                    &
-                                       chunks(chunk)%field%x_max,                    &
-                                       chunks(chunk)%field%y_min,                    &
-                                       chunks(chunk)%field%y_max,                    &
-                                       chunks(chunk)%field%z_min,                    &
-                                       chunks(chunk)%field%z_max,                    &
-                                       chunks(chunk)%field%energy1,                  &
-                                       chunks(chunk)%front_rcv_buffer,               &
-                                       CELL_DATA,VERTEX_DATA,X_FACE_DATA,Y_FACE_DATA,Z_FACE_DATA,&
-                                       depth, CELL_DATA,                             &
-                                       back_front_offset(FIELD_ENERGY1))
-    
-  ENDIF
-
-END SUBROUTINE tea_unpack_front
 
 SUBROUTINE tea_sum(value)
 
@@ -1237,12 +611,35 @@ SUBROUTINE tea_sum(value)
   INTEGER :: err
 
   total=value
-
-  CALL MPI_REDUCE(value,total,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,err)
-
+  
+  CALL MPI_REDUCE(value,total,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,mpi_cart_comm,err)
+  
   value=total
 
 END SUBROUTINE tea_sum
+
+SUBROUTINE tea_allsum2(value1, value2)
+
+  ! Global reduction for PCG solver
+
+  IMPLICIT NONE
+
+  REAL(KIND=8) :: value1, value2
+  REAL(KIND=8), DIMENSION(2) :: values, total
+  REAL(KIND=8) :: dot_product_time, timer
+
+  INTEGER :: err
+  values = (/ value1, value2 /)
+  total=values
+
+  !IF (profiler_on) dot_product_time=timer()
+  CALL MPI_ALLREDUCE(values,total,2,MPI_DOUBLE_PRECISION,MPI_SUM,mpi_cart_comm,err)
+  !IF (profiler_on) profiler%dot_product= profiler%dot_product+ (timer() - dot_product_time)
+
+  value1=total(1)
+  value2=total(2)
+
+END SUBROUTINE tea_allsum2
 
 SUBROUTINE tea_allsum(value)
 
@@ -1257,9 +654,11 @@ SUBROUTINE tea_allsum(value)
   INTEGER :: err
 
   total=value
-
-  CALL MPI_ALLREDUCE(value,total,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,err)
-
+  
+  !IF (profiler_on) dot_product_time=timer()
+  CALL MPI_ALLREDUCE(value,total,1,MPI_DOUBLE_PRECISION,MPI_SUM,mpi_cart_comm,err)
+  !IF (profiler_on) profiler%dot_product= profiler%dot_product+ (timer() - dot_product_time)
+  
   value=total
 
 END SUBROUTINE tea_allsum
@@ -1276,7 +675,7 @@ SUBROUTINE tea_min(value)
 
   minimum=value
 
-  CALL MPI_ALLREDUCE(value,minimum,1,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_WORLD,err)
+  CALL MPI_ALLREDUCE(value,minimum,1,MPI_DOUBLE_PRECISION,MPI_MIN,mpi_cart_comm,err)
 
   value=minimum
 
@@ -1294,7 +693,7 @@ SUBROUTINE tea_max(value)
 
   maximum=value
 
-  CALL MPI_ALLREDUCE(value,maximum,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,err)
+  CALL MPI_ALLREDUCE(value,maximum,1,MPI_DOUBLE_PRECISION,MPI_MAX,mpi_cart_comm,err)
 
   value=maximum
 
@@ -1312,7 +711,7 @@ SUBROUTINE tea_allgather(value,values)
 
   values(1)=value ! Just to ensure it will work in serial
 
-  CALL MPI_ALLGATHER(value,1,MPI_DOUBLE_PRECISION,values,1,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,err)
+  CALL MPI_ALLGATHER(value,1,MPI_DOUBLE_PRECISION,values,1,MPI_DOUBLE_PRECISION,mpi_cart_comm,err)
 
 END SUBROUTINE tea_allgather
 
@@ -1328,7 +727,7 @@ SUBROUTINE tea_check_error(error)
 
   maximum=error
 
-  CALL MPI_ALLREDUCE(error,maximum,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,err)
+  CALL MPI_ALLREDUCE(error,maximum,1,MPI_INTEGER,MPI_MAX,mpi_cart_comm,err)
 
   error=maximum
 

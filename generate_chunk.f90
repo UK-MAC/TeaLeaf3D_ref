@@ -2,17 +2,17 @@
 !
 ! This file is part of TeaLeaf.
 !
-! TeaLeaf is free software: you can redistribute it and/or modify it under 
-! the terms of the GNU General Public License as published by the 
-! Free Software Foundation, either version 3 of the License, or (at your option) 
+! TeaLeaf is free software: you can redistribute it and/or modify it under
+! the terms of the GNU General Public License as published by the
+! Free Software Foundation, either version 3 of the License, or (at your option)
 ! any later version.
 !
-! TeaLeaf is distributed in the hope that it will be useful, but 
-! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more 
+! TeaLeaf is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
 ! details.
 !
-! You should have received a copy of the GNU General Public License along with 
+! You should have received a copy of the GNU General Public License along with
 ! TeaLeaf. If not, see http://www.gnu.org/licenses/.
 
 !>  @brief Mesh chunk generation driver
@@ -27,13 +27,12 @@ SUBROUTINE generate_chunk(chunk)
   IMPLICIT NONE
 
   INTEGER         :: chunk
-
   INTEGER         :: state
   REAL(KIND=8), DIMENSION(number_of_states) :: state_density,state_energy
   REAL(KIND=8), DIMENSION(number_of_states) :: state_xmin,state_xmax,state_ymin,state_ymax,state_zmin,state_zmax,state_radius
   INTEGER,      DIMENSION(number_of_states) :: state_geometry
 
-  DO state=1,number_of_states 
+  DO state=1,number_of_states
    state_density(state)=states(state)%density
    state_energy(state)=states(state)%energy
    state_xmin(state)=states(state)%xmin
@@ -53,13 +52,14 @@ SUBROUTINE generate_chunk(chunk)
                                chunks(chunk)%field%y_max,             &
                                chunks(chunk)%field%z_min,             &
                                chunks(chunk)%field%z_max,             &
+                               halo_exchange_depth,                   &
                                chunks(chunk)%field%vertexx,           &
                                chunks(chunk)%field%vertexy,           &
                                chunks(chunk)%field%vertexz,           &
                                chunks(chunk)%field%cellx,             &
                                chunks(chunk)%field%celly,             &
                                chunks(chunk)%field%cellz,             &
-                               chunks(chunk)%field%density,          &
+                               chunks(chunk)%field%density,           &
                                chunks(chunk)%field%energy0,           &
                                chunks(chunk)%field%u,                 &
                                number_of_states,                      &
